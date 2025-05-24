@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 
 class ProcessingMode(Enum):
@@ -52,16 +52,37 @@ class OCRResult:
     word_analysis: Optional[Dict[str, Any]] = None
 
 
+class CorrectionMode(Enum):
+    LINE = "line"
+    PARA = "para"
+
+
+@dataclass
+class LineCorrection:
+    """Single line correction result."""
+
+    corrected_text: str
+    confidence: Optional[float] = None
+
+
+@dataclass
+class ParagraphCorrection:
+    """Paragraph-based correction result."""
+
+    paragraphs: List[str]
+    paragraph_boundaries: List[int]  # Character positions where paragraphs start
+    confidence_scores: Optional[List[float]] = None
+
+
 @dataclass
 class OCRCorrectionResult:
-    """Dataclass for storing OCR correction results."""
+    """Enhanced correction result supporting multiple modes."""
 
     extracted_text: str
-    corrected_text: str
+    correction_mode: CorrectionMode
+    corrected_text: Union[LineCorrection, ParagraphCorrection]
     processing_time: float
     model_name: str
-    metrics: Optional[OCRMetrics] = None
+    metrics: Optional[Dict[str, Any]] = None
     improvement: Optional[Dict[str, float]] = None
     error_analysis: Optional[Dict[str, Any]] = None
-    word_analysis: Optional[Dict[str, Any]] = None
-    similarity: Optional[float] = None

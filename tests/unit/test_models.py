@@ -151,7 +151,8 @@ class TestOCRCorrectionResult:
             extracted_text="original",
             corrected_text="corrected",
             processing_time=1.0,
-            model_name="corrector-model"
+            model_name="corrector-model",
+            correction_mode="line"
         )
         
         assert result.extracted_text == "original"
@@ -160,7 +161,6 @@ class TestOCRCorrectionResult:
         assert result.model_name == "corrector-model"
         assert result.metrics is None
         assert result.improvement is None
-        assert result.similarity is None
     
     def test_complete_correction_result(self):
         """Test correction result with all fields."""
@@ -174,9 +174,8 @@ class TestOCRCorrectionResult:
             model_name="corrector-model",
             metrics=metrics,
             improvement=improvement,
-            similarity=0.95
+            correction_mode="line"
         )
         
         assert result.metrics == metrics
         assert result.improvement == improvement
-        assert result.similarity == 0.95

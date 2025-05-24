@@ -4,7 +4,7 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from llm_ocr.evaluators.evaluation import OCREvaluationService
 from llm_ocr.evaluators.evaluator import OCREvaluator
@@ -55,22 +55,28 @@ class OCRPipelineWorkflow:
             modes: Processing modes to use
             output_dir: Directory to save outputs
             prompt_version: Version of prompts to use
+            evaluation: Whether to evaluate the results
+            rerun: Whether to rerun the pipeline even if results exist
+            target_dpi: Target DPI for image resizing
         """
         self.id = id
-        self.xml_path = f"{folder}/{id}.xml"
-        self.image_path = f"{folder}/{id}.jpeg"
-        self.image_str = self._get_image_str()
-        self.ground_truth_path = f"{folder}/{id}.txt"
-        self.evaluation = evaluation
+        self.folder = Path(folder)
         self.output_dir = Path(output_dir)
+        self.image_str = self._get_image_str()
+        self.evaluation = evaluation
         self.prompt_version = prompt_version
         self.model_name = model_name
         self.modes = modes
         self.rerun = rerun
         self.target_dpi = target_dpi  # Store target DPI
 
+        # Setup paths
+        self._setup_paths()
+
+        # Validate required files
+        self._validate_required_files()
+
         # Initialize document info
-        # self.document_name = Path(self.xml_path).stem
         self.timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
         # Create main output directory structure
@@ -103,6 +109,20 @@ class OCRPipelineWorkflow:
 
         # Save initial document info
         self._save_results()
+
+    def _setup_paths(self) -> None:
+        """Set up all file paths."""
+        self.xml_path = self.folder / f"{self.id}.xml"
+        self.image_path = self.folder / f"{self.id}.jpeg"
+        self.ground_truth_path = self.folder / f"{self.id}.txt"
+
+    def _validate_required_files(self) -> None:
+        """Validate that required files exist."""
+        required_files = [(self.xml_path, "XML file"), (self.image_path, "Image file")]
+
+        for file_path, description in required_files:
+            if not file_path.exists():
+                raise FileNotFoundError(f"{description} not found: {file_path}")
 
     def _load_or_init_results(self) -> Dict[str, Any]:
         """Load existing results file or initialize a new one."""
@@ -210,7 +230,14 @@ class OCRPipelineWorkflow:
             pipeline = OCRPipeline(model=self.model, evaluator=self.evaluator)
 
             # Process document
-            lines = self.alto_processor.process_alto_file(self.xml_path, self.image_path)
+            lines = (
+                self.alto_processor.process_alto_file(str(self.xml_path), str(self.image_path))
+                if self.xml_path.exists()
+                else []
+            )
+            if not lines:
+                logging.warning("No lines found in the document. Skipping OCR.")
+                continue
 
             results = pipeline.ocr_document(
                 lines=lines,
@@ -246,8 +273,6 @@ class OCRPipelineWorkflow:
             # Save results after each mode to preserve progress
             self._save_results()
 
-        # return self.results["models"][self.model_name]["ocr_results"]
-
     # STEP 2: Evaluate OCR results with ground truth
     def evaluate_ocr(self) -> None:
         """
@@ -260,7 +285,7 @@ class OCRPipelineWorkflow:
 
         if not self.ground_truth:
             logging.warning("Ground truth not provided. Skipping OCR evaluation.")
-            return None
+            return
 
         evaluation_service = OCREvaluationService()
 
@@ -302,145 +327,212 @@ class OCRPipelineWorkflow:
             except Exception as e:
                 logging.error(f"Error evaluating OCR results for mode {mode}: {e}")
 
-        # return {mode: results.get("metrics") for mode, results in self.results["models"][self.model_name]["ocr_results"].items()}
-
     # STEP 3: Run correction with LLM
-    def run_correction(self, correction_mode: str = "line") -> Optional[Dict[str, Any]]:
+    def run_correction(self, correction_modes: Union[str, List[str]] = "line") -> None:
         """
         Step 3: Run correction step with LLM and save results.
 
         Args:
-            correction_mode: "line" for single line output, "para" for paragraph detection
+            correction_modes: Single mode string or list of modes ["line", "para"]
 
         Returns:
-            Dictionary with correction results
+            Dictionary with correction results for all modes
         """
-        logging.info(f"STEP 3: Running OCR correction with model: {self.model_name}")
+        # Normalize input to list
+        if isinstance(correction_modes, str):
+            correction_modes = [correction_modes]
+
+        logging.info(
+            f"STEP 3: Running OCR correction with model: {self.model_name}, modes: {correction_modes}"
+        )
 
         # Extract OCR text from fullpage results (required for correction)
         model_results = self.results["models"][self.model_name]["ocr_results"]
 
         if "fullpage" not in model_results:
             logging.warning("Fullpage OCR results required for correction but not found.")
-            return None
+            return
 
         fullpage_results = model_results.get("fullpage", {})
         lines = fullpage_results.get("lines", [])
 
         if not lines:
             logging.warning("No fullpage OCR results found. Skipping correction.")
-            return None
+            return
 
         ocr_text = lines[0].get("extracted_text", "")
-
-        # Check if correction_results already exists
-        if "correction_results" in self.results["models"][self.model_name]:
-            correction_results = self.results["models"][self.model_name]["correction_results"]
-            if correction_results and not self.rerun:
-                logging.info("Correction results already exist. Skipping correction.")
-                return correction_results
-
         if not ocr_text:
             logging.warning("No OCR text found in fullpage results. Skipping correction.")
-            return None
+            return
 
-        start_time = time.time()
+        # Initialize correction_results as dict if not exists
+        if "correction_results" not in self.results["models"][self.model_name]:
+            self.results["models"][self.model_name]["correction_results"] = {}
 
-        # Resize image for correction step to optimize token usage
+        # Resize image once for all modes
         logging.info(f"Optimizing image for correction step (target DPI: {self.target_dpi})")
         optimized_image_str, _ = resize_image_to_dpi(
-            self.image_path, self.target_dpi, max_pixels=2000000
+            str(self.image_path), self.target_dpi, max_pixels=2000000
         )
 
-        # Create correction pipeline
+        # Create correction pipeline once
         correction_pipeline = OCRCorrectionPipeline(model=self.model, evaluator=self.evaluator)
 
-        try:
-            # Run correction with specified mode for prompt formatting
-            correction_results = correction_pipeline.run_correction(
-                image_str=optimized_image_str, ocr_text=ocr_text, mode=correction_mode
-            )
-        except Exception as e:
-            logging.error(f"Correction failed: {e}")
-            return None
+        all_results = {}
 
-        completion_time = time.time() - start_time
-        logging.info(f"Correction completed in {completion_time:.2f} seconds")
+        # Process each mode
+        for mode in correction_modes:
+            # Check if this specific mode already exists
+            if (
+                mode in self.results["models"][self.model_name]["correction_results"]
+                and not self.rerun
+            ):
+                logging.info(f"Correction mode '{mode}' already exists. Skipping.")
+                all_results[mode] = self.results["models"][self.model_name]["correction_results"][
+                    mode
+                ]
+                continue
 
-        # Add to results
-        self.results["models"][self.model_name]["correction_results"] = {
-            "original_ocr_text": ocr_text,
-            "corrected_text": correction_results.get("corrected_text", ""),
-            "correction_mode": correction_mode,
-        }
+            logging.info(f"Processing correction mode: {mode}")
+            start_time = time.time()
 
-        # Add to history
-        self._add_history_entry(step="correction", mode=correction_mode)
+            try:
+                # Run correction with specified mode
+                correction_results = correction_pipeline.run_correction(
+                    image_str=optimized_image_str, ocr_text=ocr_text, mode=mode
+                )
 
-        # Save results
+                if not correction_results or not isinstance(correction_results, dict):
+                    logging.warning("No correction results available for evaluation.")
+                    return
+
+                completion_time = time.time() - start_time
+                logging.info(f"Mode '{mode}' completed in {completion_time:.2f} seconds")
+
+                # Store results for this specific mode
+                mode_results = {
+                    "original_ocr_text": ocr_text,
+                    "corrected_text": correction_results.get("corrected_text", ""),
+                    "correction_mode": mode,
+                    "processing_time": completion_time,
+                }
+
+                # Add mode-specific fields
+                if mode == "para" and "paragraphs" in correction_results:
+                    mode_results["paragraphs"] = correction_results["paragraphs"]
+                    mode_results["paragraph_boundaries"] = correction_results.get(
+                        "paragraph_boundaries", []
+                    )
+
+                # Store under the specific mode
+                self.results["models"][self.model_name]["correction_results"][mode] = mode_results
+                all_results[mode] = mode_results
+
+                # Add to history
+                self._add_history_entry(step="correction", mode=mode)
+
+            except Exception as e:
+                logging.error(f"Correction failed for mode '{mode}': {e}")
+                all_results[mode] = {"error": str(e)}
+
+        # Save results after all modes
         self._save_results()
 
-        return self.results["models"][self.model_name]["correction_results"]
-
     # STEP 4: Evaluate correction results
-    def evaluate_correction(self) -> None:
+    def evaluate_correction(self, modes: Union[str, List[str], None] = None) -> None:
         """
         Step 4: Evaluate the correction results.
 
-        Returns:
-            Dictionary with correction metrics
+        Args:
+            modes: Specific modes to evaluate, or None to evaluate all available modes
         """
         if not self.ground_truth:
             logging.warning("Ground truth not provided. Skipping correction evaluation.")
-            return None
-
-        line_filename = self.ground_truth_path.replace(".txt", "_line.txt")
-        print(f"line_filename: {line_filename}")
-        with open(line_filename, "r", encoding="utf-8") as f:
-            ground_truth_line = f.read()
-        logging.info(f"Ground truth line: {ground_truth_line}")
+            return
 
         model_results = self.results["models"][self.model_name]
-        if not model_results["correction_results"]:
+        correction_results = model_results.get("correction_results")
+
+        if not correction_results or not isinstance(correction_results, dict):
             logging.warning("No correction results available for evaluation.")
-            return None
+            return
 
-        logging.info(f"STEP 4: Evaluating correction results for model: {self.model_name}")
+        if modes is None:
+            modes = list(correction_results.keys())  # Now safe to use
+        elif isinstance(modes, str):
+            modes = [modes]
 
-        start_time = time.time()
+        logging.info(f"STEP 4: Evaluating correction results for modes: {modes}")
 
         evaluation_service = OCREvaluationService()
-        corrected_text = model_results["correction_results"]["corrected_text"]
 
-        if not corrected_text:
-            logging.warning("No corrected text available for evaluation.")
-            return None
-        logging.info(f"Ground truth line: {ground_truth_line}")
-        logging.info(f"Corrected text: {corrected_text}")
+        for mode in modes:
+            if mode not in correction_results:
+                logging.warning(f"No results found for mode '{mode}'. Skipping.")
+                continue
 
-        evaluation_data = [
-            {
-                "ground_truth_text": ground_truth_line,
-                "extracted_text": corrected_text,
-            }
-        ]
+            logging.info(f"Evaluating mode: {mode}")
 
-        try:
-            report = evaluation_service.evaluate_ocr_results(evaluation_data, include_details=True)
+            # Get appropriate ground truth for the mode
+            ground_truth_for_mode = self._get_ground_truth_for_mode(mode)
+            if not ground_truth_for_mode:
+                logging.warning(f"No ground truth available for mode '{mode}'. Skipping.")
+                continue
 
-            # Add metrics to results
-            self.results["models"][self.model_name]["correction_results"]["metrics"] = report
+            mode_results = correction_results[mode]
+            corrected_text = mode_results.get("corrected_text", "")
 
-            completion_time = time.time() - start_time
-            logging.info(f"Correction evaluation completed in {completion_time:.2f} seconds")
+            if not corrected_text:
+                logging.warning(f"No corrected text available for mode '{mode}'.")
+                continue
 
-            # Save results
-            self._save_results()
+            start_time = time.time()
 
-        except Exception as e:
-            logging.error(f"Error evaluating correction results: {e}")
+            evaluation_data = [
+                {
+                    "ground_truth_text": ground_truth_for_mode,
+                    "extracted_text": corrected_text,
+                }
+            ]
 
-        # return self.results["models"][self.model_name]["correction_results"].get("metrics")
+            try:
+                report = evaluation_service.evaluate_ocr_results(
+                    evaluation_data, include_details=True
+                )
+
+                # Add metrics to mode-specific results
+                mode_results["metrics"] = report
+
+                completion_time = time.time() - start_time
+                logging.info(
+                    f"Evaluation for mode '{mode}' completed in {completion_time:.2f} seconds"
+                )
+
+            except Exception as e:
+                logging.error(f"Error evaluating correction results for mode '{mode}': {e}")
+
+        # Save results after all evaluations
+        self._save_results()
+
+    def _get_ground_truth_for_mode(self, mode: str) -> Optional[str]:
+        """Get appropriate ground truth for the correction mode."""
+        if mode == "line":
+            # Try to load line-specific ground truth
+            line_filename = Path(self.ground_truth_path).with_stem(
+                Path(self.ground_truth_path).stem + "_line"
+            )
+            if line_filename.exists():
+                return line_filename.read_text(encoding="utf-8")
+        elif mode == "para":
+            # Try to load paragraph-specific ground truth
+            para_filename = Path(self.ground_truth_path).with_stem(
+                Path(self.ground_truth_path).stem + "_para"
+            )
+            if para_filename.exists():
+                return para_filename.read_text(encoding="utf-8")
+
+        # Fallback to regular ground truth
+        return self.ground_truth
 
     # Utility method to run the complete pipeline
     def run_pipeline(self) -> None:
@@ -469,5 +561,3 @@ class OCRPipelineWorkflow:
             self.evaluate_correction()
 
         logging.info(f"All evaluation data saved to: {self.results_file_path}")
-
-        # return self.results

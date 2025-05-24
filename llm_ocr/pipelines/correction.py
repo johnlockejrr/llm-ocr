@@ -5,16 +5,18 @@ OCR Correction Pipeline - Module for LLM-based OCR correction.
 import logging
 import time
 from dataclasses import asdict
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+
+import numpy as np
 
 from ..config import EvaluationConfig
 from ..evaluators.evaluator import MetricsComparer, OCREvaluator
 from ..llm.base import BaseOCRModel
-from ..models import OCRCorrectionResult
+from ..models import CorrectionMode, LineCorrection, OCRCorrectionResult, ParagraphCorrection
 
 
 class OCRCorrectionPipeline:
-    """Pipeline for correcting OCR text using LLM."""
+    """Enhanced pipeline for correcting OCR text using LLM with multiple modes."""
 
     def __init__(
         self,
@@ -22,14 +24,6 @@ class OCRCorrectionPipeline:
         evaluator: OCREvaluator,
         config: Optional[EvaluationConfig] = None,
     ):
-        """
-        Initialize the OCR correction pipeline.
-
-        Args:
-            models: List of LLM models to use for correction
-            evaluator: OCR evaluator instance
-            config: Evaluation configuration (optional)
-        """
         self.model = model
         self.evaluator = evaluator
         self.config = config or EvaluationConfig()
@@ -37,101 +31,242 @@ class OCRCorrectionPipeline:
         self.logger = logging.getLogger(__name__)
         self.results: Dict[str, Any] = {}
 
+        # Mode-specific processors
+        self.mode_processors = {
+            CorrectionMode.LINE: self._process_line_mode,
+            CorrectionMode.PARA: self._process_para_mode,
+        }
+
     def run_correction(
         self,
         image_str: str,
         ocr_text: str,
         mode: str = "line",
+        ground_truth: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """
-        Run OCR correction using LLM.
+        Run OCR correction using LLM with specified mode.
 
         Args:
             image_str: base64 encoded image string
             ocr_text: Original OCR text to correct
             mode: "line" for single line output, "para" for paragraph detection
+            ground_truth: Optional ground truth for evaluation
 
         Returns:
-            Dictionary mapping model names to OCRCorrectionResult objects
+            Dictionary with correction results
         """
+        # Validate mode
+        try:
+            correction_mode = CorrectionMode(mode)
+        except ValueError:
+            self.logger.error(f"Invalid correction mode: {mode}")
+            return
+
         model_name = self.model.__class__.__name__
-        self.logger.info(f"Running OCR correction with {model_name}")
+        self.logger.info(f"Running OCR correction with {model_name} in {mode} mode")
 
         try:
-            # Start timing
             start_time = time.time()
 
-            # Perform correction
-            corrected_text = self.model.correct_text(ocr_text, image_str, mode=mode)
+            # Perform correction with mode-specific handling
+            corrected_text = self.mode_processors[correction_mode](ocr_text, image_str)
 
-            # Calculate processing time
             processing_time = time.time() - start_time
 
-            # First create the basic result without evaluation
+            # Create result object
             correction_result = OCRCorrectionResult(
                 extracted_text=ocr_text,
+                correction_mode=correction_mode,
                 corrected_text=corrected_text,
                 processing_time=processing_time,
                 model_name=model_name,
             )
-            logging.info(f"Correction completed in {processing_time:.2f} seconds")
-            logging.info(f"Correction results: {correction_result}")
 
-            return asdict(correction_result)
+            # Evaluate if ground truth provided
+            if ground_truth:
+                self._evaluate_correction_by_mode(ground_truth, ocr_text, correction_result)
+
+            self.logger.info(f"Correction completed in {processing_time:.2f} seconds")
+
+            return self._serialize_result(correction_result)
 
         except Exception as e:
-            self.logger.error(f"Error processing correction with {model_name}: {str(e)}")
-            return None
+            self.logger.error(f"Error processing correction: {str(e)}")
+            return
 
-    def _evaluate_correction(
-        self, ground_truth: str, ocr_text: str, corrected_text: str, result: OCRCorrectionResult
+    def _process_line_mode(self, ocr_text: str, image_str: str) -> LineCorrection:
+        """Process correction in line mode."""
+        corrected_text = self.model.correct_text(ocr_text, image_str, mode="line")
+
+        # Post-process: ensure single line (remove any newlines)
+        corrected_text = corrected_text.replace("\n", " ").strip()
+
+        # Optional: Get confidence from model if available
+        confidence = getattr(self.model, "get_last_confidence", lambda: None)()
+
+        return LineCorrection(corrected_text=corrected_text, confidence=confidence)
+
+    def _process_para_mode(self, ocr_text: str, image_str: str) -> ParagraphCorrection:
+        """Process correction in paragraph mode."""
+        corrected_text = self.model.correct_text(ocr_text, image_str, mode="para")
+
+        # Parse paragraphs
+        paragraphs = self._parse_paragraphs(corrected_text)
+        boundaries = self._calculate_boundaries(paragraphs)
+
+        # Optional: Get per-paragraph confidence if model supports it
+        confidence_scores = None
+        if hasattr(self.model, "get_paragraph_confidences"):
+            confidence_scores = self.model.get_paragraph_confidences()
+
+        return ParagraphCorrection(
+            paragraphs=paragraphs,
+            paragraph_boundaries=boundaries,
+            confidence_scores=confidence_scores,
+        )
+
+    def _parse_paragraphs(self, text: str) -> List[str]:
+        """Parse text into paragraphs."""
+        # Split by double newlines or other paragraph markers
+        paragraphs = []
+        current_para = []
+
+        lines = text.split("\n")
+        for line in lines:
+            if line.strip():  # Non-empty line
+                current_para.append(line)
+            elif current_para:  # Empty line and we have content
+                paragraphs.append(" ".join(current_para))
+                current_para = []
+
+        # Don't forget the last paragraph
+        if current_para:
+            paragraphs.append(" ".join(current_para))
+
+        return paragraphs
+
+    def _calculate_boundaries(self, paragraphs: List[str]) -> List[int]:
+        """Calculate character positions where paragraphs start."""
+        boundaries = [0]
+        current_pos = 0
+
+        for i, para in enumerate(paragraphs[:-1]):
+            current_pos += len(para) + 1  # +1 for space/newline between paragraphs
+            boundaries.append(current_pos)
+
+        return boundaries
+
+    def _evaluate_correction_by_mode(
+        self, ground_truth: str, ocr_text: str, result: OCRCorrectionResult
     ) -> None:
-        """
-        Evaluate correction and update the result object.
+        """Evaluate correction based on mode."""
+        if result.correction_mode == CorrectionMode.LINE:
+            self._evaluate_line_correction(ground_truth, ocr_text, result)
+        elif result.correction_mode == CorrectionMode.PARA:
+            self._evaluate_para_correction(ground_truth, ocr_text, result)
 
-        Args:
-            ground_truth: Ground truth text
-            ocr_text: Original OCR text
-            corrected_text: Corrected text
-            result: OCRCorrectionResult object to update
-        """
-        try:
-            # Evaluate corrected text
-            logging.info("Evaluating corrected text")
-            logging.info(f"Ground truth: {ground_truth}")
-            logging.info(f"Corrected text: {corrected_text}")
-            corrected_metrics = self.evaluator.evaluate_line(ground_truth, corrected_text)
-            result.metrics = corrected_metrics
+    def _evaluate_line_correction(
+        self, ground_truth: str, ocr_text: str, result: OCRCorrectionResult
+    ) -> None:
+        """Evaluate single line correction."""
+        corrected_text = result.corrected_text.corrected_text
 
-            # Evaluate original OCR text for comparison
-            ocr_metrics = self.evaluator.evaluate_line(ground_truth, ocr_text)
+        # Standard evaluation
+        corrected_metrics = self.evaluator.evaluate_line(ground_truth, corrected_text)
+        ocr_metrics = self.evaluator.evaluate_line(ground_truth, ocr_text)
 
-            # Calculate improvement
-            result.improvement = {
-                "character_accuracy_delta": round(
-                    corrected_metrics.char_accuracy - ocr_metrics.char_accuracy, 10
-                ),
-                "word_accuracy_delta": round(
-                    corrected_metrics.word_accuracy - ocr_metrics.word_accuracy, 10
-                ),
-                "old_char_preservation_delta": round(
-                    corrected_metrics.old_char_preservation - ocr_metrics.old_char_preservation, 10
-                ),
-                "case_accuracy_delta": round(
-                    corrected_metrics.case_accuracy - ocr_metrics.case_accuracy, 10
-                ),
-            }
+        result.metrics = asdict(corrected_metrics)
+        result.improvement = self._calculate_improvement(corrected_metrics, ocr_metrics)
 
-            # Add detailed analysis if configured
-            if self.config.include_detailed_analysis:
-                # Get character-level error analysis
-                result.error_analysis = self.evaluator.analyze_errors(ground_truth, corrected_text)
-                result.word_analysis = self.evaluator.analyze_words(ground_truth, corrected_text)
+        if self.config.include_detailed_analysis:
+            result.error_analysis = self.evaluator.analyze_errors(ground_truth, corrected_text)
 
-                # Add similarity score
-                result.similarity = self.evaluator.calculate_similarity(
-                    ground_truth, corrected_text
-                )
+    def _evaluate_para_correction(
+        self, ground_truth: str, ocr_text: str, result: OCRCorrectionResult
+    ) -> None:
+        """Evaluate paragraph-based correction."""
+        # Join paragraphs for overall metrics
+        corrected_text = "\n\n".join(result.corrected_text.paragraphs)
 
-        except Exception as e:
-            self.logger.error(f"Error evaluating correction: {str(e)}")
+        # Overall metrics
+        corrected_metrics = self.evaluator.evaluate_line(ground_truth, corrected_text)
+        ocr_metrics = self.evaluator.evaluate_line(ground_truth, ocr_text)
+
+        # Paragraph-specific metrics
+        para_metrics = {
+            "overall": asdict(corrected_metrics),
+            "paragraph_count": len(result.corrected_text.paragraphs),
+            "average_paragraph_length": np.mean([len(p) for p in result.corrected_text.paragraphs]),
+        }
+
+        # Check paragraph boundary accuracy if ground truth has paragraphs
+        ground_truth_paragraphs = self._parse_paragraphs(ground_truth)
+        if len(ground_truth_paragraphs) > 1:
+            para_metrics["paragraph_boundary_accuracy"] = self._evaluate_boundaries(
+                ground_truth_paragraphs, result.corrected_text.paragraphs
+            )
+
+        result.metrics = para_metrics
+        result.improvement = self._calculate_improvement(corrected_metrics, ocr_metrics)
+
+    def _evaluate_boundaries(
+        self, ground_truth_paras: List[str], corrected_paras: List[str]
+    ) -> float:
+        """Evaluate how well paragraph boundaries were detected."""
+        # Simple approach: check if paragraph count matches
+        count_accuracy = 1.0 - abs(len(ground_truth_paras) - len(corrected_paras)) / len(
+            ground_truth_paras
+        )
+
+        # More sophisticated: check actual boundary positions
+        # This would require aligning the texts first
+
+        return max(0.0, count_accuracy)
+
+    def _calculate_improvement(self, corrected_metrics, ocr_metrics) -> Dict[str, float]:
+        """Calculate improvement metrics."""
+        return {
+            "character_accuracy_delta": round(
+                corrected_metrics.char_accuracy - ocr_metrics.char_accuracy, 4
+            ),
+            "word_accuracy_delta": round(
+                corrected_metrics.word_accuracy - ocr_metrics.word_accuracy, 4
+            ),
+            "old_char_preservation_delta": round(
+                corrected_metrics.old_char_preservation - ocr_metrics.old_char_preservation, 4
+            ),
+            "case_accuracy_delta": round(
+                corrected_metrics.case_accuracy - ocr_metrics.case_accuracy, 4
+            ),
+        }
+
+    def _serialize_result(self, result: OCRCorrectionResult) -> Dict[str, Any]:
+        """Serialize result to dictionary."""
+        serialized = {
+            "extracted_text": result.extracted_text,
+            "correction_mode": result.correction_mode.value,
+            "processing_time": result.processing_time,
+            "model_name": result.model_name,
+        }
+
+        # Serialize mode-specific content
+        if result.correction_mode == CorrectionMode.LINE:
+            serialized["corrected_text"] = result.corrected_text.corrected_text
+            serialized["confidence"] = result.corrected_text.confidence
+        elif result.correction_mode == CorrectionMode.PARA:
+            serialized["paragraphs"] = result.corrected_text.paragraphs
+            serialized["paragraph_boundaries"] = result.corrected_text.paragraph_boundaries
+            serialized["corrected_text"] = "\n\n".join(result.corrected_text.paragraphs)
+            if result.corrected_text.confidence_scores:
+                serialized["confidence_scores"] = result.corrected_text.confidence_scores
+
+        # Add optional fields
+        if result.metrics:
+            serialized["metrics"] = result.metrics
+        if result.improvement:
+            serialized["improvement"] = result.improvement
+        if result.error_analysis:
+            serialized["error_analysis"] = result.error_analysis
+
+        return serialized
