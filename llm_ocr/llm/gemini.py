@@ -4,6 +4,7 @@ import time
 from typing import Any, Dict, List, Optional, Union
 
 import google.generativeai as genai
+from google.generativeai.types import PartDict
 
 from llm_ocr.llm.base import BaseOCRModel
 from llm_ocr.prompts.prompt import ModelType, PromptVersion, get_prompt
@@ -16,7 +17,7 @@ from llm_ocr.settings import GEMINI_API_KEY
 # Define a more specific type for the parts we're constructing, if helpful for clarity
 # A Part can be a string (for text) or a dictionary (for inline data like images)
 # This is a simplified representation; the actual PartDict can be more complex.
-ContentPart = Union[str, Dict[str, Any]]
+ContentPart = Union[str, PartDict]
 
 
 class GeminiOCRModel(BaseOCRModel):
@@ -30,7 +31,7 @@ class GeminiOCRModel(BaseOCRModel):
         self.prompt_version = prompt_version
         self.logger = logging.getLogger(__name__)
 
-    def _construct_image_part(self, image_base64: str) -> Dict[str, Any]:
+    def _construct_image_part(self, image_base64: str) -> Any:
         """Helper to decode base64 image and structure it as an image part."""
         image_bytes = base64.b64decode(image_base64)
         # Correct structure for an inline image part
@@ -247,6 +248,7 @@ class GeminiOCRModel(BaseOCRModel):
         )
 
         # Define fallback based on original text structure
+        fallback_result: Union[str, List[str]]
         if "\n\n" in text_to_correct:
             fallback_result = text_to_correct.split("\n\n")
         elif "\n" in text_to_correct:

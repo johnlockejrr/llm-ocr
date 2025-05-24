@@ -22,6 +22,17 @@ class ClaudeOCRModel(BaseOCRModel):
         print(f"Prompt version: {self.prompt_version}")
         self.logger = logging.getLogger(__name__)
 
+    def _get_response_text(self, blocks: list[Any]) -> str:
+        """Extract all .text from TextBlocks only, concatenate."""
+        text_chunks = []
+        for block in blocks:
+            # Only extract if it has attribute .text (i.e., is a TextBlock)
+            if hasattr(block, "text"):
+                # Defensive: skip None
+                if block.text:
+                    text_chunks.append(block.text)
+        return "".join(text_chunks)
+
     def process_single_line(self, image_base64: str) -> Dict[str, Any]:
         """Process a single line image."""
 
@@ -48,8 +59,8 @@ class ClaudeOCRModel(BaseOCRModel):
                 }
             ],
         )
-
-        result = self._extract_json_from_response(response.content[0].text)
+        response_text = self._get_response_text(response.content)
+        result = self._extract_json_from_response(response_text=response_text)
 
         # Ensure we return a Dict[str, Any] as expected
         if isinstance(result, dict):
@@ -60,7 +71,7 @@ class ClaudeOCRModel(BaseOCRModel):
 
     def process_sliding_window(self, images_base64: List[str]) -> Optional[Dict[str, Any]]:
         """Process window of lines."""
-        content = []
+        content: List[Any] = []
         for img_base64 in images_base64:
             content.append(
                 {
@@ -79,8 +90,12 @@ class ClaudeOCRModel(BaseOCRModel):
                 temperature=0.0,
                 messages=[{"role": "user", "content": content}],
             )
-
-            result = self._extract_json_from_response(response.content[0].text)
+            if not response or not hasattr(response, "content"):
+                self.logger.error("Invalid response received from the model.")
+                return None
+            self.logger.info(f"Response received: {response}")
+            response_text = self._get_response_text(response.content)
+            result = self._extract_json_from_response(response_text=response_text)
 
             # Ensure we return Optional[Dict[str, Any]] as expected
             if isinstance(result, dict):
@@ -131,7 +146,7 @@ class ClaudeOCRModel(BaseOCRModel):
 
         try:
             # Extract response text with proper typing
-            response_text: str = response.content[0].text
+            response_text = self._get_response_text(response.content)
 
             # Use your existing method to extract JSON
             result = self._extract_json_from_response(response_text)
@@ -159,7 +174,7 @@ class ClaudeOCRModel(BaseOCRModel):
 
         except (ValueError, json.JSONDecodeError) as e:
             self.logger.error(f"Failed to parse JSON from response: {e}")
-            self.logger.debug(f"Response text: {response.content[0].text}")
+            self.logger.debug(f"Response text: {self._get_response_text(response.content)}")
             return ""
 
     def correct_text(self, text: str, image_base64: str, mode: str = "line") -> str:
@@ -194,7 +209,7 @@ class ClaudeOCRModel(BaseOCRModel):
         )
 
         # Extract response text with proper typing
-        response_text: str = response.content[0].text
+        response_text = self._get_response_text(response.content)
         return response_text.strip()
 
     def correct_text_with_paragraphs(self, text: str, image_base64: str) -> Union[str, List[str]]:
@@ -227,7 +242,7 @@ class ClaudeOCRModel(BaseOCRModel):
         )
 
         # Extract response text with proper typing
-        response_text: str = response.content[0].text
+        response_text = self._get_response_text(response.content)
         corrected_text = response_text.strip()
 
         # Split into paragraphs

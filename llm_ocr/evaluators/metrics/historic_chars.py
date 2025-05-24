@@ -80,7 +80,7 @@ class OverHistoricizationMetric(BaseMetric):
 
     def _find_insertion_contexts(
         self, ground_truth: str, extracted: str, context_size: int = 2
-    ) -> List[Dict[str, str]]:
+    ) -> List[Dict[str, Any]]:
         """
         Find contexts where archaic characters were incorrectly inserted.
 

@@ -67,7 +67,7 @@ class OCRPipeline:
             self.logger.error(f"Error running OCR on document: {str(e)}")
             raise
 
-    def _get_processor(self, mode: ProcessingMode):
+    def _get_processor(self, mode: ProcessingMode) -> Any:
         """
         Get the appropriate processing method based on mode.
 

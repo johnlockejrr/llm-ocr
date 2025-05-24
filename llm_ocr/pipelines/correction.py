@@ -5,7 +5,7 @@ OCR Correction Pipeline - Module for LLM-based OCR correction.
 import logging
 import time
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np
 
@@ -32,7 +32,9 @@ class OCRCorrectionPipeline:
         self.results: Dict[str, Any] = {}
 
         # Mode-specific processors
-        self.mode_processors = {
+        self.mode_processors: Dict[
+            CorrectionMode, Callable[[str, str], Union[LineCorrection, ParagraphCorrection]]
+        ] = {
             CorrectionMode.LINE: self._process_line_mode,
             CorrectionMode.PARA: self._process_para_mode,
         }
@@ -61,7 +63,7 @@ class OCRCorrectionPipeline:
             correction_mode = CorrectionMode(mode)
         except ValueError:
             self.logger.error(f"Invalid correction mode: {mode}")
-            return
+            raise ValueError(f"Invalid correction mode: {mode}")
 
         model_name = self.model.__class__.__name__
         self.logger.info(f"Running OCR correction with {model_name} in {mode} mode")
@@ -93,7 +95,7 @@ class OCRCorrectionPipeline:
 
         except Exception as e:
             self.logger.error(f"Error processing correction: {str(e)}")
-            return
+            return None
 
     def _process_line_mode(self, ocr_text: str, image_str: str) -> LineCorrection:
         """Process correction in line mode."""
@@ -151,7 +153,7 @@ class OCRCorrectionPipeline:
         boundaries = [0]
         current_pos = 0
 
-        for i, para in enumerate(paragraphs[:-1]):
+        for para in paragraphs[:-1]:
             current_pos += len(para) + 1  # +1 for space/newline between paragraphs
             boundaries.append(current_pos)
 
@@ -170,7 +172,12 @@ class OCRCorrectionPipeline:
         self, ground_truth: str, ocr_text: str, result: OCRCorrectionResult
     ) -> None:
         """Evaluate single line correction."""
-        corrected_text = result.corrected_text.corrected_text
+        if result.correction_mode == CorrectionMode.LINE and isinstance(
+            result.corrected_text, LineCorrection
+        ):
+            corrected_text = result.corrected_text.corrected_text
+        else:
+            return
 
         # Standard evaluation
         corrected_metrics = self.evaluator.evaluate_line(ground_truth, corrected_text)
@@ -187,7 +194,12 @@ class OCRCorrectionPipeline:
     ) -> None:
         """Evaluate paragraph-based correction."""
         # Join paragraphs for overall metrics
-        corrected_text = "\n\n".join(result.corrected_text.paragraphs)
+        if result.correction_mode == CorrectionMode.PARA and isinstance(
+            result.corrected_text, ParagraphCorrection
+        ):
+            corrected_text = "\n\n".join(result.corrected_text.paragraphs)
+        else:
+            return
 
         # Overall metrics
         corrected_metrics = self.evaluator.evaluate_line(ground_truth, corrected_text)
@@ -224,7 +236,7 @@ class OCRCorrectionPipeline:
 
         return max(0.0, count_accuracy)
 
-    def _calculate_improvement(self, corrected_metrics, ocr_metrics) -> Dict[str, float]:
+    def _calculate_improvement(self, corrected_metrics: Any, ocr_metrics: Any) -> Dict[str, float]:
         """Calculate improvement metrics."""
         return {
             "character_accuracy_delta": round(
@@ -242,23 +254,25 @@ class OCRCorrectionPipeline:
         }
 
     def _serialize_result(self, result: OCRCorrectionResult) -> Dict[str, Any]:
-        """Serialize result to dictionary."""
-        serialized = {
+        serialized: Dict[str, Any] = {
             "extracted_text": result.extracted_text,
             "correction_mode": result.correction_mode.value,
             "processing_time": result.processing_time,
             "model_name": result.model_name,
         }
 
-        # Serialize mode-specific content
-        if result.correction_mode == CorrectionMode.LINE:
+        if result.correction_mode == CorrectionMode.LINE and isinstance(
+            result.corrected_text, LineCorrection
+        ):
             serialized["corrected_text"] = result.corrected_text.corrected_text
             serialized["confidence"] = result.corrected_text.confidence
-        elif result.correction_mode == CorrectionMode.PARA:
+        elif result.correction_mode == CorrectionMode.PARA and isinstance(
+            result.corrected_text, ParagraphCorrection
+        ):
             serialized["paragraphs"] = result.corrected_text.paragraphs
             serialized["paragraph_boundaries"] = result.corrected_text.paragraph_boundaries
             serialized["corrected_text"] = "\n\n".join(result.corrected_text.paragraphs)
-            if result.corrected_text.confidence_scores:
+            if result.corrected_text.confidence_scores is not None:
                 serialized["confidence_scores"] = result.corrected_text.confidence_scores
 
         # Add optional fields

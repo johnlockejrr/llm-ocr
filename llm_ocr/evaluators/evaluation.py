@@ -61,8 +61,10 @@ class OCREvaluationService:
 
         if include_details:
             report["line_details"] = self._analyze_lines(results)
-            del report["error_analysis"]['position_errors']  # Remove position errors from detailed report
-            del report["error_analysis"]['word_length_errors']
+            del report["error_analysis"][
+                "position_errors"
+            ]  # Remove position errors from detailed report
+            del report["error_analysis"]["word_length_errors"]
 
         self._log_detailed_report(report)
 
@@ -346,7 +348,9 @@ class OCREvaluationService:
                     length_group = length // 20 * 20  # Group by 20-char intervals
                     length_groups[length_group].append(r.metrics.char_accuracy)
 
-            return {f"{k}-{k+19}_chars": np.mean(v) for k, v in sorted(length_groups.items())}
+            return {
+                f"{k}-{k+19}_chars": float(np.mean(v)) for k, v in sorted(length_groups.items())
+            }
         except Exception as e:
             self.logger.error(f"Error analyzing length impact: {str(e)}")
             return {}
@@ -369,11 +373,13 @@ class OCREvaluationService:
             chunk_size = max(1, n // 5)  # Divide into 5 chunks
 
             return {
-                f"position_{i+1}": np.mean(
-                    [
-                        r.metrics.char_accuracy if r.metrics else 0.0
-                        for r in results[i : i + chunk_size]
-                    ]
+                f"position_{i+1}": float(
+                    np.mean(
+                        [
+                            r.metrics.char_accuracy if r.metrics else 0.0
+                            for r in results[i : i + chunk_size]
+                        ]
+                    )
                 )
                 for i in range(0, n, chunk_size)
             }

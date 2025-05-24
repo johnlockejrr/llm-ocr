@@ -64,7 +64,14 @@ class OpenAIOCRModel(BaseOCRModel):
             )
 
             # Extract parsed response with proper typing
-            parsed_result: Line = completion.choices[0].message.parsed
+            parsed_result = completion.choices[0].message.parsed
+            if parsed_result is None:
+                self.logger.error("Parsed result is None")
+                return {
+                    "line": "",
+                    "processing_time": time.time() - start_time,
+                    "error": "No result",
+                }
             result = parsed_result.model_dump()
             result["processing_time"] = time.time() - start_time
             return result
@@ -76,7 +83,7 @@ class OpenAIOCRModel(BaseOCRModel):
     def process_sliding_window(self, images_base64: List[str]) -> Optional[Dict[str, Any]]:
         """Process window of lines."""
         start_time = time.time()
-        content = []
+        content: Any = []
 
         for img_base64 in images_base64:
             content.append(
@@ -98,7 +105,10 @@ class OpenAIOCRModel(BaseOCRModel):
             )
 
             # Extract parsed response with proper typing
-            parsed_result: LineGroup = completion.choices[0].message.parsed
+            parsed_result = completion.choices[0].message.parsed
+            if parsed_result is None:
+                self.logger.error("Parsed result is None")
+                return None
 
             if len(parsed_result.lines) == 1:
                 # Return single line result
@@ -150,7 +160,10 @@ class OpenAIOCRModel(BaseOCRModel):
             )
 
             # Extract parsed response with proper typing
-            parsed_result: LineGroup = completion.choices[0].message.parsed
+            parsed_result = completion.choices[0].message.parsed
+            if parsed_result is None:
+                self.logger.error("Parsed result is None")
+                return ""
             self.logger.info(f"Full page: {parsed_result}")
             extracted_lines = "\n".join([line.line for line in parsed_result.lines])
             self.logger.info(f"Extracted lines: {extracted_lines}")
@@ -189,7 +202,10 @@ class OpenAIOCRModel(BaseOCRModel):
             )
 
             # Extract parsed response with proper typing
-            parsed_result: Line = completion.choices[0].message.parsed
+            parsed_result = completion.choices[0].message.parsed
+            if parsed_result is None:
+                self.logger.error("Parsed result is None")
+                return text
             return parsed_result.line
 
         except Exception as e:
@@ -227,7 +243,10 @@ class OpenAIOCRModel(BaseOCRModel):
             )
 
             # Extract parsed response with proper typing
-            parsed_result: Page_with_Paragraphs = completion.choices[0].message.parsed
+            parsed_result = completion.choices[0].message.parsed
+            if parsed_result is None:
+                self.logger.error("Parsed result is None")
+                return text  # Return original on error
             return parsed_result.paragraphs
 
         except Exception as e:

@@ -28,11 +28,14 @@ class ALTOLine:
     def get_base64_image(self) -> str:
         """Convert the image to base64 string"""
         _, buffer = cv2.imencode(".jpg", self.image)
-        return base64.b64encode(buffer).decode("utf-8")
+        return base64.b64encode(buffer.tobytes()).decode("utf-8")
 
     def get_dimensions(self) -> Tuple[int, int]:
-        """Get the dimensions of the line image"""
-        return self.image.shape[:2] if self.image is not None else (0, 0)
+        if self.image is not None:
+            height, width = self.image.shape[:2]
+            return int(height), int(width)
+        else:
+            return (0, 0)
 
     def get_word_count(self) -> int:
         """Get the number of words in the line"""
@@ -57,40 +60,25 @@ class ALTOProcessor:
     def extract_line_image(
         self, image: np.ndarray, points: np.ndarray, padding: int = 5
     ) -> np.ndarray:
-        """
-        Extract line image using polygon points with optional padding
-
-        Args:
-            image: Source image
-            points: Polygon points defining the line
-            padding: Optional padding around the line in pixels
-
-        Returns:
-            Extracted line image
-        """
         try:
-            # Get bounding rectangle
             x, y, w, h = cv2.boundingRect(points)
-
-            # Add padding while keeping within image bounds
             y1 = max(0, y - padding)
             y2 = min(image.shape[0], y + h + padding)
             x1 = max(0, x - padding)
             x2 = min(image.shape[1], x + w + padding)
 
-            # Create and apply mask
             mask = np.zeros(image.shape[:2], dtype=np.uint8)
-            cv2.fillPoly(mask, [points], 255)
+            cv2.fillPoly(mask, [points.astype(np.int32)], [255])  # type: ignore
 
-            # Extract region
             masked = cv2.bitwise_and(image, image, mask=mask)
-            cropped = masked[y1:y2, x1:x2]
-
+            cropped: np.ndarray = masked[y1:y2, x1:x2]
             return cropped
 
         except Exception as e:
             self.logger.error(f"Error extracting line image: {str(e)}")
-            return np.array([])
+            channels = image.shape[2] if image.ndim == 3 else 1
+            fallback_array: np.ndarray = np.zeros((0, 0, channels), dtype=image.dtype)
+            return fallback_array
 
     def process_alto_file(
         self, xml_path: str, image_path: str, skip_labels: Optional[List[str]] = None
