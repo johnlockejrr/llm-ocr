@@ -1,0 +1,22 @@
+{
+  "single_line_success": {
+    "content": [{"text": "{\"line\": \"Successfully extracted single line\"}"}],
+    "usage": {"input_tokens": 150, "output_tokens": 25}
+  },
+  "sliding_window_success": {
+    "content": [{"text": "{\"lines\": [{\"line\": \"First line\"}, {\"line\": \"Second line\"}, {\"line\": \"Third line\"}]}"}],
+    "usage": {"input_tokens": 300, "output_tokens": 50}
+  },
+  "full_page_success": {
+    "content": [{"text": "Full page extracted text content"}],
+    "usage": {"input_tokens": 500, "output_tokens": 100}
+  },
+  "correction_success": {
+    "content": [{"text": "Corrected text with improved accuracy"}],
+    "usage": {"input_tokens": 200, "output_tokens": 30}
+  },
+  "error_invalid_json": {
+    "content": [{"text": "This is not valid JSON format"}],
+    "usage": {"input_tokens": 100, "output_tokens": 20}
+  }
+}

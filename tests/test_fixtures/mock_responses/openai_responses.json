@@ -1,0 +1,22 @@
+{
+  "single_line_success": {
+    "choices": [{"message": {"content": "{\"line\": \"Successfully extracted single line\"}"}}],
+    "usage": {"prompt_tokens": 150, "completion_tokens": 25}
+  },
+  "sliding_window_success": {
+    "choices": [{"message": {"content": "{\"lines\": [{\"line\": \"First line\"}, {\"line\": \"Second line\"}, {\"line\": \"Third line\"}]}"}}],
+    "usage": {"prompt_tokens": 300, "completion_tokens": 50}
+  },
+  "full_page_success": {
+    "choices": [{"message": {"content": "Full page extracted text content"}}],
+    "usage": {"prompt_tokens": 500, "completion_tokens": 100}
+  },
+  "correction_success": {
+    "choices": [{"message": {"content": "Corrected text with improved accuracy"}}],
+    "usage": {"prompt_tokens": 200, "completion_tokens": 30}
+  },
+  "error_invalid_json": {
+    "choices": [{"message": {"content": "This is not valid JSON format"}}],
+    "usage": {"prompt_tokens": 100, "completion_tokens": 20}
+  }
+}
