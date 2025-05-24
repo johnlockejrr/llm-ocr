@@ -1,7 +1,7 @@
 import logging
 import time
 from typing import Any, Dict, List, Optional, Union
-
+from google.genai import Client
 import google.generativeai as genai
 
 from llm_ocr.llm.base import BaseOCRModel
@@ -13,7 +13,7 @@ class GeminiOCRModel(BaseOCRModel):
     """Gemini implementation of OCR language model."""
 
     def __init__(self, model_name: str, prompt_version: Optional[PromptVersion] = None):
-        self.client = genai.Client(api_key=GEMINI_API_KEY)
+        self.client = Client(api_key=GEMINI_API_KEY)
         self.model_name = model_name
         self.model_type = ModelType.GEMINI
         self.prompt_version = prompt_version

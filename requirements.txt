@@ -14,6 +14,7 @@ together>=0.2.0
 
 # Optional development dependencies
 pydantic>=2.0.0
+python-dotenv>=1.0.0
 
 # Standard library modules used (included in Python):
 # json, base64, logging, datetime, time, dataclasses, pathlib
