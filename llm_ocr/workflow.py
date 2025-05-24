@@ -180,7 +180,15 @@ class OCRPipelineWorkflow:
                 )
 
                 if "correction_combinations" not in results:
-                    results["correction_combinations"] = {}
+                    # Handle legacy format migration
+                    if "correction_models" not in results:
+                        results["correction_models"] = {}
+                else:
+                    # Migrate from old format to new format
+                    if "correction_models" not in results:
+                        results["correction_models"] = {}
+                    # Remove old format
+                    del results["correction_combinations"]
 
                 if not isinstance(results, dict):
                     raise ValueError("Loaded correction results are not a dictionary")
@@ -200,7 +208,7 @@ class OCRPipelineWorkflow:
                 "timestamp": self.timestamp,
                 "prompt_version": self.prompt_version.name,
             },
-            "correction_combinations": {},
+            "correction_models": {},
             "processing_history": [],
         }
 
@@ -442,16 +450,9 @@ class OCRPipelineWorkflow:
             logging.warning("No OCR text found in fullpage results. Skipping correction.")
             return
 
-        # Generate combination key for this OCR+correction model pair
-        combination_key = f"{self.ocr_model_name}_ocr__{self.correction_model_name}_correction"
-
-        # Initialize correction combination if not exists
-        if combination_key not in self.correction_results["correction_combinations"]:
-            self.correction_results["correction_combinations"][combination_key] = {
-                "ocr_model": self.ocr_model_name,
-                "correction_model": self.correction_model_name,
-                "correction_modes": {},
-            }
+        # Initialize correction model entry if not exists
+        if self.correction_model_name not in self.correction_results["correction_models"]:
+            self.correction_results["correction_models"][self.correction_model_name] = {}
 
         # Resize image once for all modes
         logging.info(f"Optimizing image for correction step (target DPI: {self.target_dpi})")
@@ -469,18 +470,26 @@ class OCRPipelineWorkflow:
 
         # Process each mode
         for mode in correction_modes:
-            # Check if this specific mode already exists
+            # Initialize correction mode if not exists
+            if mode not in self.correction_results["correction_models"][self.correction_model_name]:
+                self.correction_results["correction_models"][self.correction_model_name][mode] = {
+                    "ocr_sources": {}
+                }
+
+            # Check if this specific OCR source already exists for this mode
             if (
-                mode
-                in self.correction_results["correction_combinations"][combination_key][
-                    "correction_modes"
+                self.ocr_model_name
+                in self.correction_results["correction_models"][self.correction_model_name][mode][
+                    "ocr_sources"
                 ]
                 and not self.rerun
             ):
-                logging.info(f"Correction mode '{mode}' already exists. Skipping.")
-                all_results[mode] = self.correction_results["correction_combinations"][
-                    combination_key
-                ]["correction_modes"][mode]
+                logging.info(
+                    f"Correction mode '{mode}' with OCR source '{self.ocr_model_name}' already exists. Skipping."
+                )
+                all_results[mode] = self.correction_results["correction_models"][
+                    self.correction_model_name
+                ][mode]["ocr_sources"][self.ocr_model_name]
                 continue
 
             logging.info(f"Processing correction mode: {mode}")
@@ -499,26 +508,25 @@ class OCRPipelineWorkflow:
                 completion_time = time.time() - start_time
                 logging.info(f"Mode '{mode}' completed in {completion_time:.2f} seconds")
 
-                # Store results for this specific mode
-                mode_results = {
+                # Store results for this specific OCR source
+                source_results = {
                     "original_ocr_text": ocr_text,
                     "corrected_text": correction_results.get("corrected_text", ""),
-                    "correction_mode": mode,
                     "processing_time": completion_time,
                 }
 
                 # Add mode-specific fields
                 if mode == "para" and "paragraphs" in correction_results:
-                    mode_results["paragraphs"] = correction_results["paragraphs"]
-                    mode_results["paragraph_boundaries"] = correction_results.get(
+                    source_results["paragraphs"] = correction_results["paragraphs"]
+                    source_results["paragraph_boundaries"] = correction_results.get(
                         "paragraph_boundaries", []
                     )
 
-                # Store under the specific mode and combination
-                self.correction_results["correction_combinations"][combination_key][
-                    "correction_modes"
-                ][mode] = mode_results
-                all_results[mode] = mode_results
+                # Store under the specific correction model -> mode -> OCR source
+                self.correction_results["correction_models"][self.correction_model_name][mode][
+                    "ocr_sources"
+                ][self.ocr_model_name] = source_results
+                all_results[mode] = source_results
 
                 # Add to history
                 self._add_correction_history_entry(
@@ -533,52 +541,57 @@ class OCRPipelineWorkflow:
         self._save_correction_results()
 
     # STEP 4: Evaluate correction results
-    def evaluate_correction(
-        self, modes: Union[str, List[str], None] = None, combination_key: Optional[str] = None
-    ) -> None:
+    def evaluate_correction(self, modes: Union[str, List[str], None] = None) -> None:
         """
         Step 4: Evaluate the correction results.
 
         Args:
             modes: Specific modes to evaluate, or None to evaluate all available modes
-            combination_key: Specific OCR+correction combination to evaluate
         """
         if not self.ground_truth:
             logging.warning("Ground truth not provided. Skipping correction evaluation.")
             return
 
-        # If no combination key specified, use current OCR+correction model combination
-        if combination_key is None:
-            combination_key = f"{self.ocr_model_name}_ocr__{self.correction_model_name}_correction"
-
-        if combination_key not in self.correction_results["correction_combinations"]:
-            logging.warning(f"No correction results found for combination '{combination_key}'.")
+        if self.correction_model_name not in self.correction_results["correction_models"]:
+            logging.warning(
+                f"No correction results found for model '{self.correction_model_name}'."
+            )
             return
 
-        correction_combination = self.correction_results["correction_combinations"][combination_key]
-        correction_modes = correction_combination.get("correction_modes", {})
+        correction_model_results = self.correction_results["correction_models"][
+            self.correction_model_name
+        ]
 
-        if not correction_modes:
+        if not correction_model_results:
             logging.warning("No correction results available for evaluation.")
             return
 
         if modes is None:
-            modes = list(correction_modes.keys())
+            modes = list(correction_model_results.keys())
         elif isinstance(modes, str):
             modes = [modes]
 
         logging.info(
-            f"STEP 4: Evaluating correction results for combination '{combination_key}', modes: {modes}"
+            f"STEP 4: Evaluating correction results for model '{self.correction_model_name}', modes: {modes}"
         )
 
         evaluation_service = OCREvaluationService()
 
         for mode in modes:
-            if mode not in correction_modes:
+            if mode not in correction_model_results:
                 logging.warning(f"No results found for mode '{mode}'. Skipping.")
                 continue
 
-            logging.info(f"Evaluating mode: {mode}")
+            mode_data = correction_model_results[mode]
+            ocr_sources = mode_data.get("ocr_sources", {})
+
+            if self.ocr_model_name not in ocr_sources:
+                logging.warning(
+                    f"No OCR source '{self.ocr_model_name}' found for mode '{mode}'. Skipping."
+                )
+                continue
+
+            logging.info(f"Evaluating mode: {mode} with OCR source: {self.ocr_model_name}")
 
             # Get appropriate ground truth for the mode
             ground_truth_for_mode = self._get_ground_truth_for_mode(mode)
@@ -586,11 +599,13 @@ class OCRPipelineWorkflow:
                 logging.warning(f"No ground truth available for mode '{mode}'. Skipping.")
                 continue
 
-            mode_results = correction_modes[mode]
-            corrected_text = mode_results.get("corrected_text", "")
+            source_results = ocr_sources[self.ocr_model_name]
+            corrected_text = source_results.get("corrected_text", "")
 
             if not corrected_text:
-                logging.warning(f"No corrected text available for mode '{mode}'.")
+                logging.warning(
+                    f"No corrected text available for mode '{mode}' and OCR source '{self.ocr_model_name}'."
+                )
                 continue
 
             start_time = time.time()
@@ -607,12 +622,12 @@ class OCRPipelineWorkflow:
                     evaluation_data, include_details=True
                 )
 
-                # Add metrics to mode-specific results
-                mode_results["metrics"] = report
+                # Add metrics to source-specific results
+                source_results["metrics"] = report
 
                 completion_time = time.time() - start_time
                 logging.info(
-                    f"Evaluation for mode '{mode}' completed in {completion_time:.2f} seconds"
+                    f"Evaluation for mode '{mode}' with OCR source '{self.ocr_model_name}' completed in {completion_time:.2f} seconds"
                 )
 
             except Exception as e:

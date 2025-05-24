@@ -61,6 +61,8 @@ class OCREvaluationService:
 
         if include_details:
             report["line_details"] = self._analyze_lines(results)
+            del report["error_analysis"]['position_errors']  # Remove position errors from detailed report
+            del report["error_analysis"]['word_length_errors']
 
         self._log_detailed_report(report)
 
