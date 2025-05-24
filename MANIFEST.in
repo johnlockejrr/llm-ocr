@@ -1,0 +1,34 @@
+# Include package metadata
+include README.md
+include LICENSE
+include CLAUDE.md
+include .env.template
+include requirements.txt
+
+# Include documentation
+graft docs
+
+# Include test data (but exclude large images)
+graft ground_truth
+exclude ground_truth/*.jpeg
+exclude ground_truth/*.jpg  
+exclude ground_truth/*.png
+
+# Exclude build artifacts and caches
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.so
+global-exclude .DS_Store
+global-exclude *.swp
+global-exclude *.swo
+
+# Exclude IDE and development files
+prune .vscode
+prune .idea
+exclude .gitignore
+exclude .env
+
+# Exclude output directories
+prune outputs
+prune ocr_outputs
+prune results

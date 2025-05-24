@@ -1,0 +1,19 @@
+# Core dependencies
+pandas>=1.5.0
+numpy>=1.21.0
+Pillow>=9.0.0
+opencv-python>=4.5.0
+
+# LLM API clients
+anthropic>=0.20.0
+openai>=1.0.0
+google-genai>=0.3.0
+together>=0.2.0
+
+# Optional development dependencies
+pydantic>=2.0.0
+
+# Standard library modules used (included in Python):
+# json, base64, logging, datetime, time, dataclasses, pathlib
+# typing, os, re, io, xml.etree.ElementTree, difflib, unittest
+# concurrent.futures, itertools, collections, abc, enum
