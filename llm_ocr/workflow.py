@@ -279,7 +279,6 @@ class OCRPipelineWorkflow:
                     {
                         "ground_truth_text": line.get("ground_truth_text", ""),
                         "extracted_text": line.get("extracted_text", ""),
-                        "model_name": self.model_name,
                         "line_id": line.get("line_id", "unknown"),
                     }
                 )
@@ -423,7 +422,6 @@ class OCRPipelineWorkflow:
             {
                 "ground_truth_text": ground_truth_line,
                 "extracted_text": corrected_text,
-                "model_name": self.model_name,
             }
         ]
 

@@ -2,19 +2,35 @@
 OCR Pipeline Module - Focused only on OCR processing with no evaluation.
 """
 
+import logging
 import time
 from typing import Any, Dict, List, Optional
 
 from llm_ocr.processors.alto import ALTOLine
 
-from ..config import WINDOW_SIZE
+from ..config import WINDOW_SIZE, EvaluationConfig
+from ..evaluators.evaluation import OCREvaluationService
+from ..evaluators.evaluator import OCREvaluator
 from ..llm.base import BaseOCRModel
 from ..models import ProcessingMode
-from .base import BasePipeline
 
 
-class OCRPipeline(BasePipeline):
+class OCRPipeline:
     """Pipeline focused solely on OCR processing without evaluation."""
+
+    def __init__(
+        self,
+        model: BaseOCRModel,
+        evaluator: OCREvaluator,
+        config: Optional[EvaluationConfig] = None,
+    ):
+        self.model = model
+        self.evaluator = evaluator
+        self.config = config or EvaluationConfig()
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+        # Use OCREvaluationService for comprehensive evaluation functionality
+        self.evaluation_service = OCREvaluationService(self.config)
 
     def ocr_document(
         self,
