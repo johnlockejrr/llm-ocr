@@ -27,17 +27,20 @@ class OCRPipelineWorkflow:
     A class to manage the full OCR evaluation workflow with clearly defined steps:
     1. Run OCR with different modes and models
     2. Evaluate the OCR results with ground truth
-    3. Run correction step with LLM
+    3. Run correction step with LLM (potentially different model)
     4. Evaluate the correction results
 
-    Results are stored in a single consolidated JSON file per document.
+    Results are stored in separate JSON files:
+    - _ocr_results.json: OCR processing results by model and mode
+    - _correction_results.json: Correction results by OCR+correction model combinations
     """
 
     def __init__(
         self,
         id: str,
         folder: str = "evaluate",
-        model_name: str = "claude-3-7-sonnet-20250219",
+        ocr_model_name: str = "claude-3-7-sonnet-20250219",
+        correction_model_name: Optional[str] = None,
         modes: List[ProcessingMode] = [ProcessingMode.FULL_PAGE],
         output_dir: str = "outputs",
         prompt_version: PromptVersion = PromptVersion.V3,
@@ -51,7 +54,8 @@ class OCRPipelineWorkflow:
         Args:
             id: Document ID
             folder: Folder containing the document files (xml, jpeg, txt)
-            model_name: Model name to use
+            ocr_model_name: Model name to use for OCR
+            correction_model_name: Model name to use for correction (defaults to ocr_model_name)
             modes: Processing modes to use
             output_dir: Directory to save outputs
             prompt_version: Version of prompts to use
@@ -62,10 +66,11 @@ class OCRPipelineWorkflow:
         self.id = id
         self.folder = Path(folder)
         self.output_dir = Path(output_dir)
-        
+
         self.evaluation = evaluation
         self.prompt_version = prompt_version
-        self.model_name = model_name
+        self.ocr_model_name = ocr_model_name
+        self.correction_model_name = correction_model_name or ocr_model_name
         self.modes = modes
         self.rerun = rerun
         self.target_dpi = target_dpi  # Store target DPI
@@ -83,18 +88,20 @@ class OCRPipelineWorkflow:
         # Create main output directory structure
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Path to the consolidated results file
-        self.results_file_path = self.output_dir / f"{id}_results.json"
+        # Paths to separate results files
+        self.ocr_results_file_path = self.output_dir / f"{id}_ocr_results.json"
+        self.correction_results_file_path = self.output_dir / f"{id}_correction_results.json"
 
-        # Load existing results file if it exists, or create a new one
-        self.results = self._load_or_init_results()
+        # Load existing results files if they exist, or create new ones
+        self.ocr_results = self._load_or_init_ocr_results()
+        self.correction_results = self._load_or_init_correction_results()
 
         # Read ground truth if available
         self.ground_truth = None
         if self.ground_truth_path:
             try:
                 self.ground_truth = Path(self.ground_truth_path).read_text(encoding="utf-8")
-                self.results["document_info"]["ground_truth"] = self.ground_truth
+                self.ocr_results["document_info"]["ground_truth"] = self.ground_truth
             except Exception as e:
                 logging.warning(f"Could not read ground truth file: {e}")
 
@@ -109,7 +116,7 @@ class OCRPipelineWorkflow:
         self.evaluator = OCREvaluator()
 
         # Save initial document info
-        self._save_results()
+        self._save_ocr_results()
 
     def _setup_paths(self) -> None:
         """Set up all file paths."""
@@ -125,33 +132,31 @@ class OCRPipelineWorkflow:
             if not file_path.exists():
                 raise FileNotFoundError(f"{description} not found: {file_path}")
 
-    def _load_or_init_results(self) -> Dict[str, Any]:
-        """Load existing results file or initialize a new one."""
-        if self.results_file_path.exists():
+    def _load_or_init_ocr_results(self) -> Dict[str, Any]:
+        """Load existing OCR results file or initialize a new one."""
+        if self.ocr_results_file_path.exists():
             try:
-                with open(self.results_file_path, "r", encoding="utf-8") as f:
+                with open(self.ocr_results_file_path, "r", encoding="utf-8") as f:
                     results = json.load(f)
-                logging.info(f"Loaded existing results file: {self.results_file_path}")
+                logging.info(f"Loaded existing OCR results file: {self.ocr_results_file_path}")
 
                 # Initialize model entry if it doesn't exist
-                if "models" not in results:
-                    results["models"] = {}
+                if "ocr_models" not in results:
+                    results["ocr_models"] = {}
 
-                if self.model_name not in results["models"]:
-                    results["models"][self.model_name] = {
-                        "ocr_results": {},
-                        "correction_results": None,
-                    }
+                if self.ocr_model_name not in results["ocr_models"]:
+                    results["ocr_models"][self.ocr_model_name] = {}
+
                 if not isinstance(results, dict):
-                    raise ValueError("Loaded results are not a dictionary")
+                    raise ValueError("Loaded OCR results are not a dictionary")
                 return results
             except Exception as e:
-                logging.warning(f"Error loading results file: {e}. Creating new file.")
+                logging.warning(f"Error loading OCR results file: {e}. Creating new file.")
 
-        # Initialize new results structure
+        # Initialize new OCR results structure
         return {
             "document_info": {
-                "document_name": self.id,
+                "document_id": self.id,
                 "xml_path": str(self.xml_path),
                 "image_path": str(self.image_path),
                 "ground_truth_path": (
@@ -160,14 +165,56 @@ class OCRPipelineWorkflow:
                 "timestamp": self.timestamp,
                 "prompt_version": self.prompt_version.name,
             },
-            "models": {self.model_name: {"ocr_results": {}, "correction_results": None}},
+            "ocr_models": {self.ocr_model_name: {}},
+            "processing_history": [],
+        }
+
+    def _load_or_init_correction_results(self) -> Dict[str, Any]:
+        """Load existing correction results file or initialize a new one."""
+        if self.correction_results_file_path.exists():
+            try:
+                with open(self.correction_results_file_path, "r", encoding="utf-8") as f:
+                    results = json.load(f)
+                logging.info(
+                    f"Loaded existing correction results file: {self.correction_results_file_path}"
+                )
+
+                if "correction_combinations" not in results:
+                    results["correction_combinations"] = {}
+
+                if not isinstance(results, dict):
+                    raise ValueError("Loaded correction results are not a dictionary")
+                return results
+            except Exception as e:
+                logging.warning(f"Error loading correction results file: {e}. Creating new file.")
+
+        # Initialize new correction results structure
+        return {
+            "document_info": {
+                "document_id": self.id,
+                "xml_path": str(self.xml_path),
+                "image_path": str(self.image_path),
+                "ground_truth_path": (
+                    str(self.ground_truth_path) if self.ground_truth_path else None
+                ),
+                "timestamp": self.timestamp,
+                "prompt_version": self.prompt_version.name,
+            },
+            "correction_combinations": {},
             "processing_history": [],
         }
 
     def _initialize_model(self) -> Any:
-        """Initialize LLM model."""
+        """Initialize LLM model for OCR."""
         return create_model(
-            model_name=self.model_name,
+            model_name=self.ocr_model_name,
+            prompt_version=self.prompt_version,
+        )
+
+    def _initialize_correction_model(self) -> Any:
+        """Initialize LLM model for correction."""
+        return create_model(
+            model_name=self.correction_model_name,
             prompt_version=self.prompt_version,
         )
 
@@ -177,30 +224,54 @@ class OCRPipelineWorkflow:
             image_str = base64.b64encode(image_file.read()).decode("utf-8")
         return image_str
 
-    def _add_history_entry(self, step: str, mode: Optional[str]) -> None:
-        """Add an entry to the processing history."""
+    def _add_ocr_history_entry(self, mode: Optional[str]) -> None:
+        """Add an entry to the OCR processing history."""
         entry = {
             "timestamp": datetime.datetime.now().strftime("%Y%m%d_%H%M%S"),
-            "step": step,
-            "model": self.model_name,
+            "step": "ocr",
+            "model": self.ocr_model_name,
         }
 
         if mode:
             entry["mode"] = mode
 
-        self.results["processing_history"].append(entry)
+        self.ocr_results["processing_history"].append(entry)
 
-    def _save_results(self) -> None:
-        """Save the consolidated results to the JSON file."""
+    def _add_correction_history_entry(self, ocr_model: str, correction_mode: str) -> None:
+        """Add an entry to the correction processing history."""
+        entry = {
+            "timestamp": datetime.datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "step": "correction",
+            "ocr_model": ocr_model,
+            "correction_model": self.correction_model_name,
+            "correction_mode": correction_mode,
+        }
+
+        self.correction_results["processing_history"].append(entry)
+
+    def _save_ocr_results(self) -> None:
+        """Save the OCR results to the JSON file."""
         # Update timestamp
-        self.results["document_info"]["last_updated"] = datetime.datetime.now().strftime(
+        self.ocr_results["document_info"]["last_updated"] = datetime.datetime.now().strftime(
             "%Y%m%d_%H%M%S"
         )
 
-        with open(self.results_file_path, "w", encoding="utf-8") as f:
-            json.dump(self.results, f, ensure_ascii=False, indent=2)
+        with open(self.ocr_results_file_path, "w", encoding="utf-8") as f:
+            json.dump(self.ocr_results, f, ensure_ascii=False, indent=2)
 
-        logging.info(f"Saved results to {self.results_file_path}")
+        logging.info(f"Saved OCR results to {self.ocr_results_file_path}")
+
+    def _save_correction_results(self) -> None:
+        """Save the correction results to the JSON file."""
+        # Update timestamp
+        self.correction_results["document_info"]["last_updated"] = datetime.datetime.now().strftime(
+            "%Y%m%d_%H%M%S"
+        )
+
+        with open(self.correction_results_file_path, "w", encoding="utf-8") as f:
+            json.dump(self.correction_results, f, ensure_ascii=False, indent=2)
+
+        logging.info(f"Saved correction results to {self.correction_results_file_path}")
 
     # STEP 1: Run OCR with different modes
     def run_ocr(self) -> None:
@@ -210,15 +281,17 @@ class OCRPipelineWorkflow:
         Returns:
             Dictionary with OCR results by mode
         """
-        logging.info(f"STEP 1: Processing document: {self.id} with model: {self.model_name}")
+        logging.info(
+            f"STEP 1: Processing document: {self.id} with OCR model: {self.ocr_model_name}"
+        )
 
         # Process document with all modes
         for mode in self.modes:
             start_time = time.time()
             logging.info(f"Processing with mode: {mode.value}")
             if not self.rerun:
-                if self.results["models"][self.model_name]["ocr_results"].get(mode.value):
-                    lines_existed = self.results["models"][self.model_name]["ocr_results"][
+                if self.ocr_results["ocr_models"][self.ocr_model_name].get(mode.value):
+                    lines_existed = self.ocr_results["ocr_models"][self.ocr_model_name][
                         mode.value
                     ].get("lines")
                     if lines_existed:
@@ -253,10 +326,13 @@ class OCRPipelineWorkflow:
             )
 
             # Add to results structure
-            self.results["models"][self.model_name]["ocr_results"][mode.value] = {"lines": []}
+            self.ocr_results["ocr_models"][self.ocr_model_name][mode.value] = {
+                "lines": [],
+                "processing_time": completion_time,
+            }
 
             # Convert to serializable format and add to results
-            for model_name, model_results in results.items():
+            for _, model_results in results.items():
                 serializable_lines = []
                 for line in model_results:
                     if hasattr(line, "__dict__"):
@@ -264,15 +340,15 @@ class OCRPipelineWorkflow:
                     else:
                         serializable_lines.append(line)
 
-                self.results["models"][self.model_name]["ocr_results"][mode.value][
+                self.ocr_results["ocr_models"][self.ocr_model_name][mode.value][
                     "lines"
                 ] = serializable_lines
 
             # Add to history
-            self._add_history_entry(step="ocr", mode=mode.value)
+            self._add_ocr_history_entry(mode=mode.value)
 
             # Save results after each mode to preserve progress
-            self._save_results()
+            self._save_ocr_results()
 
     # STEP 2: Evaluate OCR results with ground truth
     def evaluate_ocr(self) -> None:
@@ -282,7 +358,7 @@ class OCRPipelineWorkflow:
         Returns:
             Dictionary with comparison metrics
         """
-        logging.info(f"STEP 2: Evaluating OCR results for model: {self.model_name}")
+        logging.info(f"STEP 2: Evaluating OCR results for model: {self.ocr_model_name}")
 
         if not self.ground_truth:
             logging.warning("Ground truth not provided. Skipping OCR evaluation.")
@@ -290,7 +366,7 @@ class OCRPipelineWorkflow:
 
         evaluation_service = OCREvaluationService()
 
-        for mode, mode_results in self.results["models"][self.model_name]["ocr_results"].items():
+        for mode, mode_results in self.ocr_results["ocr_models"][self.ocr_model_name].items():
             start_time = time.time()
             logging.info(f"Evaluating mode: {mode}")
 
@@ -315,7 +391,7 @@ class OCRPipelineWorkflow:
                 )
 
                 # Add metrics to results
-                self.results["models"][self.model_name]["ocr_results"][mode]["metrics"] = report
+                self.ocr_results["ocr_models"][self.ocr_model_name][mode]["metrics"] = report
 
                 completion_time = time.time() - start_time
                 logging.info(
@@ -323,7 +399,7 @@ class OCRPipelineWorkflow:
                 )
 
                 # Save results after each evaluation
-                self._save_results()
+                self._save_ocr_results()
 
             except Exception as e:
                 logging.error(f"Error evaluating OCR results for mode {mode}: {e}")
@@ -344,17 +420,17 @@ class OCRPipelineWorkflow:
             correction_modes = [correction_modes]
 
         logging.info(
-            f"STEP 3: Running OCR correction with model: {self.model_name}, modes: {correction_modes}"
+            f"STEP 3: Running OCR correction with correction model: {self.correction_model_name}, modes: {correction_modes}"
         )
 
         # Extract OCR text from fullpage results (required for correction)
-        model_results = self.results["models"][self.model_name]["ocr_results"]
+        ocr_model_results = self.ocr_results["ocr_models"][self.ocr_model_name]
 
-        if "fullpage" not in model_results:
+        if "fullpage" not in ocr_model_results:
             logging.warning("Fullpage OCR results required for correction but not found.")
             return
 
-        fullpage_results = model_results.get("fullpage", {})
+        fullpage_results = ocr_model_results.get("fullpage", {})
         lines = fullpage_results.get("lines", [])
 
         if not lines:
@@ -366,12 +442,16 @@ class OCRPipelineWorkflow:
             logging.warning("No OCR text found in fullpage results. Skipping correction.")
             return
 
-        # Initialize correction_results as dict if not exists or is None
-        if (
-            "correction_results" not in self.results["models"][self.model_name]
-            or self.results["models"][self.model_name]["correction_results"] is None
-        ):
-            self.results["models"][self.model_name]["correction_results"] = {}
+        # Generate combination key for this OCR+correction model pair
+        combination_key = f"{self.ocr_model_name}_ocr__{self.correction_model_name}_correction"
+
+        # Initialize correction combination if not exists
+        if combination_key not in self.correction_results["correction_combinations"]:
+            self.correction_results["correction_combinations"][combination_key] = {
+                "ocr_model": self.ocr_model_name,
+                "correction_model": self.correction_model_name,
+                "correction_modes": {},
+            }
 
         # Resize image once for all modes
         logging.info(f"Optimizing image for correction step (target DPI: {self.target_dpi})")
@@ -379,8 +459,11 @@ class OCRPipelineWorkflow:
             str(self.image_path), self.target_dpi, max_pixels=2000000
         )
 
-        # Create correction pipeline once
-        correction_pipeline = OCRCorrectionPipeline(model=self.model, evaluator=self.evaluator)
+        # Create correction pipeline with correction model
+        correction_model = self._initialize_correction_model()
+        correction_pipeline = OCRCorrectionPipeline(
+            model=correction_model, evaluator=self.evaluator
+        )
 
         all_results = {}
 
@@ -388,13 +471,16 @@ class OCRPipelineWorkflow:
         for mode in correction_modes:
             # Check if this specific mode already exists
             if (
-                mode in self.results["models"][self.model_name]["correction_results"]
+                mode
+                in self.correction_results["correction_combinations"][combination_key][
+                    "correction_modes"
+                ]
                 and not self.rerun
             ):
                 logging.info(f"Correction mode '{mode}' already exists. Skipping.")
-                all_results[mode] = self.results["models"][self.model_name]["correction_results"][
-                    mode
-                ]
+                all_results[mode] = self.correction_results["correction_combinations"][
+                    combination_key
+                ]["correction_modes"][mode]
                 continue
 
             logging.info(f"Processing correction mode: {mode}")
@@ -428,50 +514,67 @@ class OCRPipelineWorkflow:
                         "paragraph_boundaries", []
                     )
 
-                # Store under the specific mode
-                self.results["models"][self.model_name]["correction_results"][mode] = mode_results
+                # Store under the specific mode and combination
+                self.correction_results["correction_combinations"][combination_key][
+                    "correction_modes"
+                ][mode] = mode_results
                 all_results[mode] = mode_results
 
                 # Add to history
-                self._add_history_entry(step="correction", mode=mode)
+                self._add_correction_history_entry(
+                    ocr_model=self.ocr_model_name, correction_mode=mode
+                )
 
             except Exception as e:
                 logging.error(f"Correction failed for mode '{mode}': {e}")
                 all_results[mode] = {"error": str(e)}
 
         # Save results after all modes
-        self._save_results()
+        self._save_correction_results()
 
     # STEP 4: Evaluate correction results
-    def evaluate_correction(self, modes: Union[str, List[str], None] = None) -> None:
+    def evaluate_correction(
+        self, modes: Union[str, List[str], None] = None, combination_key: Optional[str] = None
+    ) -> None:
         """
         Step 4: Evaluate the correction results.
 
         Args:
             modes: Specific modes to evaluate, or None to evaluate all available modes
+            combination_key: Specific OCR+correction combination to evaluate
         """
         if not self.ground_truth:
             logging.warning("Ground truth not provided. Skipping correction evaluation.")
             return
 
-        model_results = self.results["models"][self.model_name]
-        correction_results = model_results.get("correction_results")
+        # If no combination key specified, use current OCR+correction model combination
+        if combination_key is None:
+            combination_key = f"{self.ocr_model_name}_ocr__{self.correction_model_name}_correction"
 
-        if not correction_results or not isinstance(correction_results, dict):
+        if combination_key not in self.correction_results["correction_combinations"]:
+            logging.warning(f"No correction results found for combination '{combination_key}'.")
+            return
+
+        correction_combination = self.correction_results["correction_combinations"][combination_key]
+        correction_modes = correction_combination.get("correction_modes", {})
+
+        if not correction_modes:
             logging.warning("No correction results available for evaluation.")
             return
 
         if modes is None:
-            modes = list(correction_results.keys())  # Now safe to use
+            modes = list(correction_modes.keys())
         elif isinstance(modes, str):
             modes = [modes]
 
-        logging.info(f"STEP 4: Evaluating correction results for modes: {modes}")
+        logging.info(
+            f"STEP 4: Evaluating correction results for combination '{combination_key}', modes: {modes}"
+        )
 
         evaluation_service = OCREvaluationService()
 
         for mode in modes:
-            if mode not in correction_results:
+            if mode not in correction_modes:
                 logging.warning(f"No results found for mode '{mode}'. Skipping.")
                 continue
 
@@ -483,7 +586,7 @@ class OCRPipelineWorkflow:
                 logging.warning(f"No ground truth available for mode '{mode}'. Skipping.")
                 continue
 
-            mode_results = correction_results[mode]
+            mode_results = correction_modes[mode]
             corrected_text = mode_results.get("corrected_text", "")
 
             if not corrected_text:
@@ -516,7 +619,7 @@ class OCRPipelineWorkflow:
                 logging.error(f"Error evaluating correction results for mode '{mode}': {e}")
 
         # Save results after all evaluations
-        self._save_results()
+        self._save_correction_results()
 
     def _get_ground_truth_for_mode(self, mode: str) -> Optional[str]:
         """Get appropriate ground truth for the correction mode."""
@@ -564,4 +667,5 @@ class OCRPipelineWorkflow:
         if self.ground_truth:
             self.evaluate_correction()
 
-        logging.info(f"All evaluation data saved to: {self.results_file_path}")
+        logging.info(f"OCR results saved to: {self.ocr_results_file_path}")
+        logging.info(f"Correction results saved to: {self.correction_results_file_path}")

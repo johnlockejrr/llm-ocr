@@ -63,12 +63,17 @@ from llm_ocr.models import ProcessingMode
 workflow = OCRPipelineWorkflow(
     id="document_id",
     folder="ground_truth",  # Contains .xml, .jpeg files
-    model_name="claude-3-7-sonnet-20250219",
+    ocr_model_name="claude-3-7-sonnet-20250219",
+    correction_model_name="gpt-4o-2024-08-06",  # Optional, defaults to ocr_model_name
     modes=[ProcessingMode.FULL_PAGE],
     prompt_version=PromptVersion.V3
 )
 
 results = workflow.run_pipeline()
+
+# Results are now saved in separate files:
+# - document_id_ocr_results.json: OCR processing results by model and mode
+# - document_id_correction_results.json: Correction results by OCR+correction model combinations
 ```
 
 ## Configuration
