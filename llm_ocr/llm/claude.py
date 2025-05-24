@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Optional, Union
 import anthropic
 
 from llm_ocr.llm.base import BaseOCRModel
-from llm_ocr.models import ProcessingMode
 from llm_ocr.prompts.prompt import ModelType, PromptVersion, get_prompt
 from llm_ocr.settings import ANTHROPIC_API_KEY
 

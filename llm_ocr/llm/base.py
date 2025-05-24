@@ -5,7 +5,6 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union
 
 from ..config import ModelConfig
-from ..models import ProcessingMode
 
 
 class BaseOCRModel(ABC):

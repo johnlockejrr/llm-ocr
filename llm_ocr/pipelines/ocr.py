@@ -2,9 +2,7 @@
 OCR Pipeline Module - Focused only on OCR processing with no evaluation.
 """
 
-import logging
 import time
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from llm_ocr.processors.alto import ALTOLine
@@ -158,7 +156,7 @@ class OCRPipeline(BasePipeline):
                 # Get window lines
                 window_lines = lines[window_start:window_end]
                 window_images = [line.get_base64_image() for line in window_lines]
-                window_texts = [line.text for line in window_lines]
+                # window_texts = [line.text for line in window_lines]
 
                 # Process entire window
                 start_time = time.time()

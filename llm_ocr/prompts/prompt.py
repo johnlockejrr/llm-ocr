@@ -3,7 +3,7 @@
 import json
 import os
 from enum import Enum, auto
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 
 class ModelType(Enum):

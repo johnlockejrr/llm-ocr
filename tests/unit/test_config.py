@@ -1,7 +1,6 @@
 """
 Unit tests for configuration module.
 """
-import pytest
 from llm_ocr.config import ModelConfig, EvaluationConfig
 
 

@@ -2,14 +2,11 @@
 Tests for the metrics module.
 """
 
-import difflib
 import unittest
-from typing import Set
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from llm_ocr.config import EvaluationConfig
 from llm_ocr.evaluators.evaluator import MetricsComparer, OCREvaluator
-from llm_ocr.evaluators.metrics.base import BaseMetric
 from llm_ocr.evaluators.metrics.case_accuracy import CaseAccuracyMetric
 from llm_ocr.evaluators.metrics.character_accuracy import CharacterAccuracyMetric, SimilarityMetric
 from llm_ocr.evaluators.metrics.error_analysis import ErrorAnalysisMetric
@@ -421,7 +418,7 @@ class TestOCREvaluator(unittest.TestCase):
 
         ground_truth = "This is a test."
         extracted = "This is a test."
-        metrics = evaluator.evaluate_line(ground_truth, extracted)
+        evaluator.evaluate_line(ground_truth, extracted)
 
         # Verify char_accuracy metric wasn't called
         evaluator.metrics["char_accuracy"].evaluate.assert_not_called()

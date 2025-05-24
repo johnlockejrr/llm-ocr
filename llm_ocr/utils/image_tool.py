@@ -165,7 +165,7 @@ def resize_image_to_dpi(
             size_reduction = (1 - final_info["file_size_mb"] / original_info["file_size_mb"]) * 100
             pixel_reduction = (1 - final_info["total_pixels"] / original_info["total_pixels"]) * 100
 
-            logging.info(f"Image resized successfully:")
+            logging.info("Image resized successfully:")
             logging.info(
                 f"  File size: {final_info['file_size_mb']:.2f} MB ({size_reduction:.1f}% reduction)"
             )

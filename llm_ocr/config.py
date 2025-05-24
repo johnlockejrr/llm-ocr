@@ -3,7 +3,7 @@ Configuration classes for OCR language models and evaluation.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Tuple, Type, Union
+from typing import Any, Dict
 
 from llm_ocr.prompts.prompt import ModelType, PromptVersion
 

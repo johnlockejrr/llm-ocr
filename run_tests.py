@@ -6,7 +6,6 @@ Provides convenient commands for running different types of tests.
 import sys
 import subprocess
 import argparse
-from pathlib import Path
 
 
 def run_command(cmd, description):
@@ -89,7 +88,7 @@ def main():
     success = run_command(cmd, f"Running {args.type} tests")
     
     if args.coverage and success:
-        print(f"\nCoverage report generated in htmlcov/index.html")
+        print("\nCoverage report generated in htmlcov/index.html")
     
     # Additional quality checks
     if args.type == "all":

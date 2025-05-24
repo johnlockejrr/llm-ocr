@@ -1,12 +1,7 @@
 """
 Unit tests for ALTO processor.
 """
-import pytest
-import tempfile
-import cv2
 import numpy as np
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 from llm_ocr.processors.alto import ALTOProcessor, ALTOLine
 

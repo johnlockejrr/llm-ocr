@@ -2,8 +2,7 @@
 Basic integration tests for OCR workflow.
 """
 import pytest
-from unittest.mock import patch, MagicMock
-from pathlib import Path
+from unittest.mock import patch
 
 from llm_ocr.workflow import OCRPipelineWorkflow
 from llm_ocr.models import ProcessingMode

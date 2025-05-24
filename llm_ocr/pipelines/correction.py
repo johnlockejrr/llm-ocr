@@ -5,7 +5,7 @@ OCR Correction Pipeline - Module for LLM-based OCR correction.
 import logging
 import time
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 
 from ..config import EvaluationConfig
 from ..evaluators.evaluator import MetricsComparer, OCREvaluator

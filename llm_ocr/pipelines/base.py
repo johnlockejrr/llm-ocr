@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from itertools import zip_longest
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -198,7 +198,7 @@ class BasePipeline(ABC):
                     ] += 1
 
                 # Use our specialized WordAnalysisMetric
-                word_analysis = self.word_analyzer.evaluate(
+                self.word_analyzer.evaluate(
                     result.ground_truth_text, result.extracted_text
                 )
 

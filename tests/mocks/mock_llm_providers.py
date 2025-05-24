@@ -1,12 +1,10 @@
 """
 Mock LLM providers for testing without making actual API calls.
 """
-import json
 from unittest.mock import MagicMock, patch
 from typing import Dict, Any, List, Optional
 
 from llm_ocr.llm.base import BaseOCRModel
-from llm_ocr.models import ProcessingMode
 
 
 class MockClaudeModel(BaseOCRModel):

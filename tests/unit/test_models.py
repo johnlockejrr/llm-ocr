@@ -1,7 +1,6 @@
 """
 Unit tests for data models.
 """
-import pytest
 from llm_ocr.models import (
     Line, OCRResult, OCRMetrics, OCRCorrectionResult, 
     ProcessingMode

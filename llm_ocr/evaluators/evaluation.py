@@ -9,14 +9,11 @@ from itertools import zip_longest
 from pathlib import Path
 from typing import Any
 from typing import Counter as CounterType
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
 from llm_ocr.evaluators.metrics.character_accuracy import SimilarityMetric
-from llm_ocr.evaluators.metrics.character_accuracy_without_case import (
-    CaseInsensitiveCharacterAccuracyMetric,
-)
 from llm_ocr.evaluators.metrics.error_analysis import ErrorAnalysisMetric
 from llm_ocr.evaluators.metrics.historic_chars import OverHistoricizationMetric
 from llm_ocr.evaluators.metrics.word_analysis import WordAnalysisMetric
@@ -443,7 +440,7 @@ class OCREvaluationService:
                     ] += 1
 
                 # Use our specialized WordAnalysisMetric
-                word_analysis = self.word_analyzer.evaluate(
+                self.word_analyzer.evaluate(
                     result.ground_truth_text, result.extracted_text
                 )
 

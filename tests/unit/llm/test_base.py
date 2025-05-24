@@ -2,8 +2,6 @@
 Unit tests for LLM base module.
 """
 import pytest
-import json
-from unittest.mock import MagicMock, patch
 
 from llm_ocr.llm.base import BaseOCRModel
 

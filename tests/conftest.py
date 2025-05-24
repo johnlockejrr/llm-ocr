@@ -3,11 +3,9 @@ Pytest configuration and shared fixtures for LLM OCR package tests.
 """
 import pytest
 import tempfile
-import json
 import base64
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-from typing import Dict, Any, List, Optional
 
 from llm_ocr.config import ModelConfig, EvaluationConfig
 from llm_ocr.models import Line, OCRResult, OCRMetrics, ProcessingMode

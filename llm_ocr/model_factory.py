@@ -1,7 +1,5 @@
 # in llm_ocr/factory.py
 from llm_ocr.settings import ANTHROPIC_API_KEY, OPENAI_API_KEY
-
-api_keys = {"anthropic": ANTHROPIC_API_KEY, "openai": OPENAI_API_KEY}
 from llm_ocr.llm.base import BaseOCRModel
 from llm_ocr.llm.claude import ClaudeOCRModel
 from llm_ocr.llm.gemini import GeminiOCRModel
@@ -9,6 +7,8 @@ from llm_ocr.llm.openai import OpenAIOCRModel
 from llm_ocr.llm.together import TogetherOCRModel
 from llm_ocr.prompts.prompt import PromptVersion, ModelType
 
+
+api_keys = {"anthropic": ANTHROPIC_API_KEY, "openai": OPENAI_API_KEY}
 
 # Simple model registry mapping model names to their types
 MODEL_REGISTRY = {

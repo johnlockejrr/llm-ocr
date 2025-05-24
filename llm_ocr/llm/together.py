@@ -1,12 +1,9 @@
-import base64
 import json
 import logging
 import re
 import time
-from io import BytesIO
 from typing import Any, Dict, List, Optional, Union
 
-from PIL import Image
 from together import Together
 
 from llm_ocr.llm.base import BaseOCRModel
@@ -239,7 +236,7 @@ class TogetherOCRModel(BaseOCRModel):
             if isinstance(result, dict) and "line" in result and isinstance(result["line"], str):
                 return result["line"]
             else:
-                self.logger.error(f"Could not extract text from response")
+                self.logger.error("Could not extract text from response")
                 return ""
 
         except Exception as e:

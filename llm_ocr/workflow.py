@@ -4,14 +4,13 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
-import pandas as pd
 
 from llm_ocr.evaluators.evaluation import OCREvaluationService
 from llm_ocr.evaluators.evaluator import OCREvaluator
 from llm_ocr.model_factory import create_model
-from llm_ocr.models import Line, ProcessingMode
+from llm_ocr.models import ProcessingMode
 from llm_ocr.pipelines.correction import OCRCorrectionPipeline
 from llm_ocr.pipelines.ocr import OCRPipeline
 from llm_ocr.processors.alto import ALTOProcessor

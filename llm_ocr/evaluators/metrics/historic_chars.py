@@ -1,7 +1,7 @@
 from collections import Counter
 from typing import Any
 from typing import Counter as CounterType
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List
 
 from llm_ocr.evaluators.metrics.base import BaseMetric
 

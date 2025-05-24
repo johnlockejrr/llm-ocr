@@ -1,7 +1,6 @@
 """
 Unit tests for prompt module.
 """
-import pytest
 from llm_ocr.prompts.prompt import PromptVersion, ModelType
 
 
