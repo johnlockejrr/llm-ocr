@@ -8,14 +8,10 @@ from typing import Any, Dict, Optional
 from llm_ocr.evaluators.metrics.base import BaseMetric
 from llm_ocr.evaluators.metrics.case_accuracy import CaseAccuracyMetric
 from llm_ocr.evaluators.metrics.character_accuracy import CharacterAccuracyMetric, SimilarityMetric
-from llm_ocr.evaluators.metrics.character_accuracy_without_case import (
-    CaseInsensitiveCharacterAccuracyMetric,
-)
 from llm_ocr.evaluators.metrics.error_analysis import ErrorAnalysisMetric
 from llm_ocr.evaluators.metrics.historic_chars import OverHistoricizationMetric
 from llm_ocr.evaluators.metrics.old_char_preservation import OldCharPreservationMetric
 from llm_ocr.evaluators.metrics.word_accuracy import WordAccuracyMetric
-from llm_ocr.evaluators.metrics.word_analysis import WordAnalysisMetric
 
 from ..config import EvaluationConfig
 from ..models import OCRMetrics
@@ -51,7 +47,9 @@ class OCREvaluator:
 
         # Core metrics
         self.metrics["char_accuracy"] = CharacterAccuracyMetric()
-        self.metrics["char_accuracy_case_insensitive"] = CaseInsensitiveCharacterAccuracyMetric()
+        self.metrics["char_accuracy_case_insensitive"] = CharacterAccuracyMetric(
+            case_sensitive=False
+        )
         self.metrics["word_accuracy"] = WordAccuracyMetric()
         self.metrics["old_char_preservation"] = OldCharPreservationMetric(old_chars_set)
         self.metrics["case_accuracy"] = CaseAccuracyMetric()
@@ -59,7 +57,6 @@ class OCREvaluator:
 
         # Analysis metrics
         self.metrics["error_analysis"] = ErrorAnalysisMetric(old_chars_set)
-        self.metrics["word_analysis"] = WordAnalysisMetric()
         self.metrics["similarity"] = SimilarityMetric(
             self.config.char_similarity_weight, self.config.word_similarity_weight
         )
@@ -146,20 +143,6 @@ class OCREvaluator:
             Dictionary with detailed error analysis
         """
         result = self.metrics["error_analysis"].evaluate(ground_truth, extracted)
-        return result if isinstance(result, dict) else {}
-
-    def analyze_words(self, ground_truth: str, extracted: str) -> Dict[str, Any]:
-        """
-        Analyze word-level differences between ground truth and extracted text.
-
-        Args:
-            ground_truth: The known correct text
-            extracted: The text extracted by OCR
-
-        Returns:
-            Dictionary with word-level error analysis
-        """
-        result = self.metrics["word_analysis"].evaluate(ground_truth, extracted)
         return result if isinstance(result, dict) else {}
 
     def calculate_similarity(self, ground_truth: str, extracted: str) -> float:

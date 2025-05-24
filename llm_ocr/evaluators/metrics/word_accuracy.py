@@ -1,8 +1,7 @@
 import re
 
-from Levenshtein import distance as levenshtein_distance
-
 from llm_ocr.evaluators.metrics.base import BaseMetric
+from llm_ocr.evaluators.metrics.utils import levenshtein_distance
 
 
 class WordAccuracyMetric(BaseMetric):

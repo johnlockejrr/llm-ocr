@@ -12,7 +12,6 @@ from llm_ocr.evaluators.metrics.character_accuracy import CharacterAccuracyMetri
 from llm_ocr.evaluators.metrics.error_analysis import ErrorAnalysisMetric
 from llm_ocr.evaluators.metrics.old_char_preservation import OldCharPreservationMetric
 from llm_ocr.evaluators.metrics.word_accuracy import WordAccuracyMetric
-from llm_ocr.evaluators.metrics.word_analysis import WordAnalysisMetric
 from llm_ocr.models import OCRMetrics
 
 
@@ -51,7 +50,8 @@ class TestCharacterAccuracyMetric(unittest.TestCase):
         ground_truth = "This is a test."
         extracted = "Something else."
         # Using Levenshtein distance
-        distance = self.metric._levenshtein_distance(ground_truth, extracted)
+        from llm_ocr.evaluators.metrics.utils import levenshtein_distance
+        distance = levenshtein_distance(ground_truth, extracted)
         max_length = max(len(ground_truth), len(extracted))
         expected = 1 - (distance / max_length)
         self.assertAlmostEqual(self.metric.evaluate(ground_truth, extracted), expected, places=3)
@@ -60,11 +60,32 @@ class TestCharacterAccuracyMetric(unittest.TestCase):
 
     def test_levenshtein_distance(self):
         """Test Levenshtein distance calculation."""
-        self.assertEqual(self.metric._levenshtein_distance("kitten", "sitting"), 3)
-        self.assertEqual(self.metric._levenshtein_distance("saturday", "sunday"), 3)
-        self.assertEqual(self.metric._levenshtein_distance("", ""), 0)
-        self.assertEqual(self.metric._levenshtein_distance("", "abc"), 3)
-        self.assertEqual(self.metric._levenshtein_distance("abc", ""), 3)
+        from llm_ocr.evaluators.metrics.utils import levenshtein_distance
+        self.assertEqual(levenshtein_distance("kitten", "sitting"), 3)
+        self.assertEqual(levenshtein_distance("saturday", "sunday"), 3)
+        self.assertEqual(levenshtein_distance("", ""), 0)
+        self.assertEqual(levenshtein_distance("", "abc"), 3)
+        self.assertEqual(levenshtein_distance("abc", ""), 3)
+
+    def test_case_insensitive_mode(self):
+        """Test case-insensitive character accuracy."""
+        case_insensitive_metric = CharacterAccuracyMetric(case_sensitive=False)
+        
+        # Test name property
+        self.assertEqual(case_insensitive_metric.name, "char_accuracy_case_insensitive")
+        
+        # Test that case differences are ignored
+        ground_truth = "This Is A Test."
+        extracted = "this is a test."
+        self.assertEqual(case_insensitive_metric.evaluate(ground_truth, extracted), 1.0)
+        
+        # Test partial match with case differences
+        ground_truth = "This Is A Test."
+        extracted = "this is test."  # Missing "a " but same case handling
+        result = case_insensitive_metric.evaluate(ground_truth, extracted)
+        # Should be same as regular metric on lowercase versions
+        regular_result = self.metric.evaluate(ground_truth.lower(), extracted.lower())
+        self.assertEqual(result, regular_result)
 
 
 class TestWordAccuracyMetric(unittest.TestCase):
@@ -255,59 +276,6 @@ class TestErrorAnalysisMetric(unittest.TestCase):
         self.assertIn("і", result["special_char_errors"][1]["special_chars_ground_truth"])
 
 
-class TestWordAnalysisMetric(unittest.TestCase):
-    """Tests for WordAnalysisMetric."""
-
-    def setUp(self):
-        self.metric = WordAnalysisMetric()
-
-    def test_name(self):
-        """Test the name property."""
-        self.assertEqual(self.metric.name, "word_analysis")
-
-    def test_no_word_errors(self):
-        """Test when texts match perfectly."""
-        ground_truth = "This is a test."
-        extracted = "This is a test."
-        result = self.metric.evaluate(ground_truth, extracted)
-        self.assertEqual(result["total_word_errors"], 0)
-        self.assertEqual(len(result["word_substitutions"]), 0)
-        self.assertEqual(len(result["word_deletions"]), 0)
-        self.assertEqual(len(result["word_insertions"]), 0)
-
-    def test_word_substitutions(self):
-        """Test word substitutions."""
-        ground_truth = "This is a test."
-        extracted = "That is a text."
-        result = self.metric.evaluate(ground_truth, extracted)
-        # 2 substitutions: 'This'->'That' and 'test'->'text'
-        self.assertEqual(len(result["word_substitutions"]), 2)
-        self.assertEqual(result["word_substitutions"][0]["ground_truth"], ["This"])
-        self.assertEqual(result["word_substitutions"][0]["extracted"], ["That"])
-        self.assertEqual(result["word_substitutions"][1]["ground_truth"], ["test."])
-        self.assertEqual(result["word_substitutions"][1]["extracted"], ["text."])
-
-    def test_word_deletions(self):
-        """Test word deletions."""
-        ground_truth = "The quick brown fox jumps."
-        extracted = "The fox jumps."
-        result = self.metric.evaluate(ground_truth, extracted)
-        # 1 deletion: 'a test'
-        self.assertEqual(len(result["word_deletions"]), 1)
-        self.assertEqual(result["word_deletions"][0]["words"], ["quick", "brown"])
-
-    def test_word_insertions(self):
-        """Test word insertions."""
-        ground_truth = "The fox jumps."
-        extracted = "The quick brown fox jumps."
-        result = self.metric.evaluate(ground_truth, extracted)
-
-        # difflib's SequenceMatcher typically groups consecutive insertions together
-        # rather than treating them as separate insertions
-        self.assertEqual(len(result["word_insertions"]), 1)
-        self.assertEqual(result["word_insertions"][0]["words"], ["quick", "brown"])
-        self.assertEqual(result["word_insertions"][0]["position"], 1)  # Position after "The"
-
 
 class TestSimilarityMetric(unittest.TestCase):
     """Tests for SimilarityMetric."""
@@ -384,7 +352,6 @@ class TestOCREvaluator(unittest.TestCase):
         self.assertIn("old_char_preservation", self.evaluator.metrics)
         self.assertIn("case_accuracy", self.evaluator.metrics)
         self.assertIn("error_analysis", self.evaluator.metrics)
-        self.assertIn("word_analysis", self.evaluator.metrics)
         self.assertIn("similarity", self.evaluator.metrics)
 
     def test_evaluate_line_empty(self):
@@ -439,21 +406,6 @@ class TestOCREvaluator(unittest.TestCase):
             ground_truth, extracted
         )
 
-    def test_analyze_words(self):
-        """Test word analysis."""
-        ground_truth = "This is a test."
-        extracted = "This is test."
-
-        # Mock the word analysis metric
-        self.evaluator.metrics["word_analysis"] = MagicMock()
-        self.evaluator.metrics["word_analysis"].name = "word_analysis"
-        self.evaluator.metrics["word_analysis"].evaluate.return_value = {"total_word_errors": 1}
-
-        result = self.evaluator.analyze_words(ground_truth, extracted)
-        self.assertEqual(result["total_word_errors"], 1)
-        self.evaluator.metrics["word_analysis"].evaluate.assert_called_once_with(
-            ground_truth, extracted
-        )
 
     def test_calculate_similarity(self):
         """Test similarity calculation."""

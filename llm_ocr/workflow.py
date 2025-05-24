@@ -62,7 +62,7 @@ class OCRPipelineWorkflow:
         self.id = id
         self.folder = Path(folder)
         self.output_dir = Path(output_dir)
-        self.image_str = self._get_image_str()
+        
         self.evaluation = evaluation
         self.prompt_version = prompt_version
         self.model_name = model_name
@@ -75,6 +75,7 @@ class OCRPipelineWorkflow:
 
         # Validate required files
         self._validate_required_files()
+        self.image_str = self._get_image_str()
 
         # Initialize document info
         self.timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -365,8 +366,11 @@ class OCRPipelineWorkflow:
             logging.warning("No OCR text found in fullpage results. Skipping correction.")
             return
 
-        # Initialize correction_results as dict if not exists
-        if "correction_results" not in self.results["models"][self.model_name]:
+        # Initialize correction_results as dict if not exists or is None
+        if (
+            "correction_results" not in self.results["models"][self.model_name]
+            or self.results["models"][self.model_name]["correction_results"] is None
+        ):
             self.results["models"][self.model_name]["correction_results"] = {}
 
         # Resize image once for all modes
