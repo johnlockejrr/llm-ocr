@@ -1,8 +1,9 @@
 import logging
 import time
 from typing import Any, Dict, List, Optional, Union
-from google.genai import Client
+
 import google.generativeai as genai
+from google.genai import Client
 
 from llm_ocr.llm.base import BaseOCRModel
 from llm_ocr.prompts.prompt import ModelType, PromptVersion, get_prompt

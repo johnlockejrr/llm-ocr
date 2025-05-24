@@ -6,7 +6,6 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-
 from llm_ocr.evaluators.evaluation import OCREvaluationService
 from llm_ocr.evaluators.evaluator import OCREvaluator
 from llm_ocr.model_factory import create_model

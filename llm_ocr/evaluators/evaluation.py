@@ -2,24 +2,21 @@
 OCR Evaluation Service - Completely standalone and flexible evaluation functionality.
 """
 
-import json
 import logging
 from collections import Counter, defaultdict
 from itertools import zip_longest
-from pathlib import Path
 from typing import Any
 from typing import Counter as CounterType
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import numpy as np
 
 from llm_ocr.evaluators.metrics.character_accuracy import SimilarityMetric
 from llm_ocr.evaluators.metrics.error_analysis import ErrorAnalysisMetric
 from llm_ocr.evaluators.metrics.historic_chars import OverHistoricizationMetric
-from llm_ocr.evaluators.metrics.word_analysis import WordAnalysisMetric
 
 from ..config import EvaluationConfig
-from ..models import Line, OCRResult
+from ..models import OCRResult
 from .evaluator import OCREvaluator
 
 
@@ -45,179 +42,10 @@ class OCREvaluationService:
 
         # Create metrics for direct use
         self.error_analyzer = ErrorAnalysisMetric(old_chars_set)
-        self.word_analyzer = WordAnalysisMetric()
         self.similarity_metric = SimilarityMetric(
             self.config.char_similarity_weight, self.config.word_similarity_weight
         )
         self.over_historicization_metric = OverHistoricizationMetric()
-
-    # ===== NEW FLEXIBLE COMPARISON METHODS =====
-
-    def compare_texts(
-        self, ground_truth: str, extracted_text: str, processing_time: float = 0.0
-    ) -> Tuple[OCRResult, Dict[str, Any]]:
-        """
-        Compare a single ground truth text with an extracted text.
-
-        Args:
-            ground_truth: Ground truth text
-            extracted_text: Extracted/OCR text to compare
-            processing_time: Optional processing time
-
-        Returns:
-            Tuple of (OCRResult, metrics_dict)
-        """
-        # Calculate metrics
-        metrics = self.evaluator.evaluate_line(ground_truth, extracted_text)
-
-        # Create OCRResult
-        result = OCRResult(
-            ground_truth_text=ground_truth,
-            extracted_text=extracted_text,
-            processing_time=processing_time,
-            metrics=metrics,
-        )
-
-        # Generate detailed metrics report
-        metrics_dict = self._extract_metrics_dict(metrics)
-
-        # Add error analysis
-        error_analysis = self.error_analyzer.evaluate(ground_truth, extracted_text)
-        metrics_dict["error_analysis"] = error_analysis
-
-        return result, metrics_dict
-
-    def compare_text_lists(
-        self,
-        ground_truth_texts: List[str],
-        extracted_texts: List[str],
-        processing_times: Optional[List[float]] = None,
-    ) -> Dict[str, Any]:
-        """
-        Compare lists of ground truth texts with extracted texts.
-
-        Args:
-            ground_truth_texts: List of ground truth texts
-            extracted_texts: List of extracted/OCR texts
-            processing_times: Optional list of processing times (same length as texts)
-
-        Returns:
-            Dictionary with comprehensive evaluation report
-        """
-        # Ensure we have processing times of the right length
-        if processing_times is None:
-            processing_times = [0.0] * len(ground_truth_texts)
-        elif len(processing_times) != len(ground_truth_texts):
-            self.logger.warning(
-                f"Processing times list length ({len(processing_times)}) doesn't match text list length ({len(ground_truth_texts)})"
-            )
-            processing_times = processing_times[: len(ground_truth_texts)] + [0.0] * (
-                len(ground_truth_texts) - len(processing_times)
-            )
-
-        # Create OCRResult objects for each pair
-        results = []
-        for i, (gt, ext) in enumerate(
-            zip_longest(ground_truth_texts, extracted_texts, fillvalue="")
-        ):
-            time = processing_times[i] if i < len(processing_times) else 0.0
-
-            # Calculate metrics
-            metrics = self.evaluator.evaluate_line(gt, ext)
-
-            # Create OCRResult
-            result = OCRResult(
-                ground_truth_text=gt, extracted_text=ext, processing_time=time, metrics=metrics
-            )
-
-            results.append(result)
-
-        # Generate comprehensive report for these results
-        report = self.generate_report(results, include_details=True)
-
-        return report
-
-    def compare_line_objects(
-        self,
-        ground_truth_lines: List[Line],
-        extracted_texts: List[str],
-        processing_times: Optional[List[float]] = None,
-    ) -> Dict[str, Any]:
-        """
-        Compare Line objects with extracted texts.
-
-        Args:
-            ground_truth_lines: List of Line objects containing ground truth
-            extracted_texts: List of extracted/OCR texts
-            processing_times: Optional list of processing times
-
-        Returns:
-            Dictionary with comprehensive evaluation report
-        """
-        # Extract text from Line objects
-        ground_truth_texts = [line.text for line in ground_truth_lines]
-
-        # Use the text lists comparison method
-        return self.compare_text_lists(
-            ground_truth_texts=ground_truth_texts,
-            extracted_texts=extracted_texts,
-            processing_times=processing_times,
-        )
-
-    def compare_line_pairs(
-        self, line_pairs: List[Tuple[str, str]], processing_times: Optional[List[float]] = None
-    ) -> Dict[str, Any]:
-        """
-        Compare pairs of (ground_truth, extracted_text).
-
-        Args:
-            line_pairs: List of tuples with (ground_truth, extracted_text)
-            processing_times: Optional list of processing times
-
-        Returns:
-            Dictionary with comprehensive evaluation report
-        """
-        # Unzip the pairs
-        if not line_pairs:
-            return {"error": "No line pairs provided"}
-
-        ground_truth_texts, extracted_texts = zip(*line_pairs)
-
-        # Use the text lists comparison method
-        return self.compare_text_lists(
-            ground_truth_texts=list(ground_truth_texts),
-            extracted_texts=list(extracted_texts),
-            processing_times=processing_times,
-        )
-
-    def _extract_metrics_dict(self, metrics: Any) -> Dict[str, Any]:
-        """Extract metrics from a Metrics object into a dictionary."""
-        if metrics is None:
-            return {
-                "char_accuracy": 0.0,
-                "word_accuracy": 0.0,
-                "old_char_preservation": 0.0,
-                "case_accuracy": 0.0,
-                "case_errors": [],
-                "case_accuracy_case_insensitive": 0.0,
-            }
-
-        metrics_dict = {
-            "char_accuracy": getattr(metrics, "char_accuracy", 0.0),
-            "word_accuracy": getattr(metrics, "word_accuracy", 0.0),
-            "old_char_preservation": getattr(metrics, "old_char_preservation", 0.0),
-            "case_accuracy": getattr(metrics, "case_accuracy", 0.0),
-            "case_errors": getattr(metrics, "case_errors", []),
-            "case_accuracy_case_insensitive": getattr(
-                metrics, "char_accuracy_case_insensitive", 0.0
-            ),
-        }
-
-        # Optionally, you can safely check for additional attributes
-        if hasattr(metrics, "historicization_errors"):
-            metrics_dict["historicization_errors"] = metrics.historicization_errors
-
-        return metrics_dict
 
     def generate_report(
         self, results: List[OCRResult], include_details: bool = False
@@ -439,11 +267,6 @@ class OCREvaluationService:
                         f"{sub['ground_truth']}->{sub['extracted']}"
                     ] += 1
 
-                # Use our specialized WordAnalysisMetric
-                self.word_analyzer.evaluate(
-                    result.ground_truth_text, result.extracted_text
-                )
-
                 # Track position-based errors
                 words_gt = result.ground_truth_text.split()
                 words_ext = result.extracted_text.split()
@@ -563,27 +386,6 @@ class OCREvaluationService:
             self.logger.error(f"Error analyzing position impact: {str(e)}")
             return {}
 
-    def save_evaluation_report(
-        self, report: Dict[str, Dict[str, Any]], output_dir: Path, prefix: str = "evaluation"
-    ) -> None:
-        """
-        Save evaluation report to JSON file.
-
-        Args:
-            report: Evaluation report dictionary
-            output_dir: Directory to save the report
-            prefix: Prefix for the output filename
-        """
-        output_path = output_dir / f"{prefix}_report.json"
-
-        try:
-            with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(report, f, ensure_ascii=False, indent=2)
-
-            self.logger.info(f"Evaluation report saved to {output_path}")
-        except Exception as e:
-            self.logger.error(f"Error saving evaluation report: {str(e)}")
-
     def _log_detailed_report(self, report_data: Dict[str, Any]) -> None:
         """Log detailed report with proper encoding."""
         try:
@@ -599,21 +401,6 @@ class OCREvaluationService:
             )
             self.logger.info(f"Case Accuracy: {report_data.get('case_accuracy', 0):.2%}")
             self.logger.info(f"Total Lines Processed: {report_data.get('total_lines', 0)}")
-
-            # Error patterns
-            if (
-                "error_analysis" in report_data
-                and "common_char_errors" in report_data["error_analysis"]
-            ):
-                self.logger.info("\nTop Error Patterns:")
-                errors = report_data["error_analysis"]["common_char_errors"]
-                if errors:
-                    for pattern, count in list(errors.items())[:5]:
-                        # Convert error pattern to readable format
-                        from_char, to_char = pattern.split("->")
-                        self.logger.info(f"'{from_char}' → '{to_char}': {count} occurrences")
-                else:
-                    self.logger.info("No common error patterns detected")
 
         except Exception as e:
             self.logger.error(f"Error generating detailed report: {str(e)}")
