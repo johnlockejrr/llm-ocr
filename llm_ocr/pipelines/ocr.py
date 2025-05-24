@@ -103,7 +103,6 @@ class OCRPipeline(BasePipeline):
                     "ground_truth_text": line.text,
                     "extracted_text": result["line"],
                     "processing_time": processing_time,
-                    "model_name": model.__class__.__name__,
                 }
 
                 results.append(ocr_result)
@@ -116,7 +115,6 @@ class OCRPipeline(BasePipeline):
                         "ground_truth_text": line.text,
                         "extracted_text": "",
                         "processing_time": 0.0,
-                        "model_name": model.__class__.__name__,
                         "error": str(e),
                     }
                 )
@@ -173,7 +171,6 @@ class OCRPipeline(BasePipeline):
                                     "ground_truth_text": line.text,
                                     "extracted_text": window_result[j]["line"],
                                     "processing_time": processing_time / len(window_result),
-                                    "model_name": model.__class__.__name__,
                                 }
                                 results.append(ocr_result)
                     else:
@@ -183,7 +180,6 @@ class OCRPipeline(BasePipeline):
                             "ground_truth_text": window_lines[target_idx].text,
                             "extracted_text": window_result["line"],
                             "processing_time": processing_time,
-                            "model_name": model.__class__.__name__,
                         }
                         results.append(ocr_result)
                 else:
@@ -194,7 +190,6 @@ class OCRPipeline(BasePipeline):
                             "ground_truth_text": lines[i].text,
                             "extracted_text": "",
                             "processing_time": 0.0,
-                            "model_name": model.__class__.__name__,
                             "error": "No result returned from model",
                         }
                     )
@@ -213,7 +208,6 @@ class OCRPipeline(BasePipeline):
                         "ground_truth_text": lines[i].text,
                         "extracted_text": "",
                         "processing_time": 0.0,
-                        "model_name": model.__class__.__name__,
                         "error": str(e),
                     }
                 )
@@ -226,7 +220,6 @@ class OCRPipeline(BasePipeline):
                     "ground_truth_text": lines[len(results)].text,
                     "extracted_text": "",
                     "processing_time": 0.0,
-                    "model_name": model.__class__.__name__,
                     "error": "Missing result",
                 }
             )
@@ -264,7 +257,6 @@ class OCRPipeline(BasePipeline):
                     "ground_truth_text": texts,
                     "extracted_text": extracted_lines,
                     "processing_time": processing_time,
-                    "model_name": model.__class__.__name__,
                 }
             ]
 
@@ -275,7 +267,6 @@ class OCRPipeline(BasePipeline):
                     "ground_truth_text": texts,
                     "extracted_text": "",
                     "processing_time": 0.0,
-                    "model_name": model.__class__.__name__,
                     "error": str(e),
                 }
             ]

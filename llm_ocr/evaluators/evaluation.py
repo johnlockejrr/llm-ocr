@@ -64,13 +64,6 @@ class OCREvaluationService:
 
         self._log_detailed_report(report)
 
-        # Add extracted text to the report
-        output_texts = []
-        for result in results:
-            if hasattr(result, "extracted_text") and result.extracted_text:
-                output_texts.append(result.extracted_text)
-        report["output"] = output_texts
-
         return report
 
     def convert_to_ocr_results(self, raw_results: List[Any]) -> List[OCRResult]:
