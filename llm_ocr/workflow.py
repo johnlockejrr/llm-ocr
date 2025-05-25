@@ -2,7 +2,6 @@ import base64
 import datetime
 import json
 import logging
-import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -295,7 +294,6 @@ class OCRPipelineWorkflow:
 
         # Process document with all modes
         for mode in self.modes:
-            start_time = time.time()
             logging.info(f"Processing with mode: {mode.value}")
             if not self.rerun:
                 if self.ocr_results["ocr_models"][self.ocr_model_name].get(mode.value):
@@ -328,15 +326,13 @@ class OCRPipelineWorkflow:
                 id=self.id,
             )
 
-            completion_time = time.time() - start_time
             logging.info(
-                f"Processed {len(lines)} lines with mode {mode.value} in {completion_time:.2f} seconds"
+                f"Processed {len(lines)} lines with mode {mode.value}"
             )
 
             # Add to results structure
             self.ocr_results["ocr_models"][self.ocr_model_name][mode.value] = {
                 "lines": [],
-                "processing_time": completion_time,
             }
 
             # Convert to serializable format and add to results
@@ -375,7 +371,6 @@ class OCRPipelineWorkflow:
         evaluation_service = OCREvaluationService()
 
         for mode, mode_results in self.ocr_results["ocr_models"][self.ocr_model_name].items():
-            start_time = time.time()
             logging.info(f"Evaluating mode: {mode}")
 
             lines = mode_results.get("lines", [])
@@ -401,9 +396,8 @@ class OCRPipelineWorkflow:
                 # Add metrics to results
                 self.ocr_results["ocr_models"][self.ocr_model_name][mode]["metrics"] = report
 
-                completion_time = time.time() - start_time
                 logging.info(
-                    f"Evaluation completed for mode {mode} in {completion_time:.2f} seconds"
+                    f"Evaluation completed for mode {mode}"
                 )
 
                 # Save results after each evaluation
@@ -493,7 +487,6 @@ class OCRPipelineWorkflow:
                 continue
 
             logging.info(f"Processing correction mode: {mode}")
-            start_time = time.time()
 
             try:
                 # Run correction with specified mode
@@ -505,14 +498,12 @@ class OCRPipelineWorkflow:
                     logging.warning("No correction results available for evaluation.")
                     return
 
-                completion_time = time.time() - start_time
-                logging.info(f"Mode '{mode}' completed in {completion_time:.2f} seconds")
+                logging.info(f"Mode '{mode}' completed")
 
                 # Store results for this specific OCR source
                 source_results = {
                     "original_ocr_text": ocr_text,
                     "corrected_text": correction_results.get("corrected_text", ""),
-                    "processing_time": completion_time,
                 }
 
                 # Add mode-specific fields
@@ -608,8 +599,6 @@ class OCRPipelineWorkflow:
                 )
                 continue
 
-            start_time = time.time()
-
             evaluation_data = [
                 {
                     "ground_truth_text": ground_truth_for_mode,
@@ -625,9 +614,8 @@ class OCRPipelineWorkflow:
                 # Add metrics to source-specific results
                 source_results["metrics"] = report
 
-                completion_time = time.time() - start_time
                 logging.info(
-                    f"Evaluation for mode '{mode}' with OCR source '{self.ocr_model_name}' completed in {completion_time:.2f} seconds"
+                    f"Evaluation for mode '{mode}' with OCR source '{self.ocr_model_name}' completed"
                 )
 
             except Exception as e:

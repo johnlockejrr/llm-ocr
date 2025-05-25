@@ -109,12 +109,10 @@ class TestOCRResult:
         result = OCRResult(
             ground_truth_text="original",
             extracted_text="extracted",
-            processing_time=1.5
         )
         
         assert result.ground_truth_text == "original"
         assert result.extracted_text == "extracted"
-        assert result.processing_time == 1.5
         assert result.model_name is None
         assert result.metrics is None
         assert result.error_analysis is None
@@ -129,7 +127,6 @@ class TestOCRResult:
         result = OCRResult(
             ground_truth_text="original",
             extracted_text="extracted", 
-            processing_time=2.0,
             model_name="test-model",
             metrics=metrics,
             error_analysis=error_analysis,
@@ -150,14 +147,12 @@ class TestOCRCorrectionResult:
         result = OCRCorrectionResult(
             extracted_text="original",
             corrected_text="corrected",
-            processing_time=1.0,
             model_name="corrector-model",
             correction_mode="line"
         )
         
         assert result.extracted_text == "original"
         assert result.corrected_text == "corrected"
-        assert result.processing_time == 1.0
         assert result.model_name == "corrector-model"
         assert result.metrics is None
         assert result.improvement is None
@@ -170,7 +165,6 @@ class TestOCRCorrectionResult:
         result = OCRCorrectionResult(
             extracted_text="original",
             corrected_text="corrected",
-            processing_time=1.5,
             model_name="corrector-model",
             metrics=metrics,
             improvement=improvement,

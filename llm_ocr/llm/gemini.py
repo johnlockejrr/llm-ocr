@@ -1,6 +1,5 @@
 import base64
 import logging
-import time
 from typing import Any, Dict, List, Optional, Union
 
 import google.generativeai as genai
@@ -59,7 +58,6 @@ class GeminiOCRModel(BaseOCRModel):
         return None
 
     def process_single_line(self, image_base64: str, id: Optional[str] = None) -> Dict[str, Any]:
-        start_time = time.time()
         # Assuming prompt_version is always set via __init__
         prompt_str = get_prompt("SINGLE_LINE", self.model_type, self.prompt_version)
 
@@ -82,12 +80,10 @@ class GeminiOCRModel(BaseOCRModel):
                 self.logger.info(f"Result: {result}")
 
                 if isinstance(result, dict):
-                    result["processing_time"] = time.time() - start_time
                     return result
                 else:
                     return {
                         "line": str(result) if result is not None else "",
-                        "processing_time": time.time() - start_time,
                         "error": "Unexpected response format or empty result",
                     }
             else:
@@ -99,18 +95,16 @@ class GeminiOCRModel(BaseOCRModel):
                     error_msg = f"Request issue: {response.prompt_feedback.block_reason}"
                 return {
                     "line": "",
-                    "processing_time": time.time() - start_time,
                     "error": error_msg,
                 }
 
         except Exception as e:
             self.logger.error(f"Error processing single line: {str(e)}", exc_info=True)
-            return {"line": "", "processing_time": time.time() - start_time, "error": str(e)}
+            return {"line": "", "error": str(e)}
 
     def process_sliding_window(
         self, images_base64: List[str], id: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
-        start_time = time.time()
         prompt_str = get_prompt("SLIDING_WINDOW", self.model_type, self.prompt_version)
 
         try:
@@ -131,7 +125,6 @@ class GeminiOCRModel(BaseOCRModel):
                 result = self._extract_json_from_response(response_text)
 
                 if isinstance(result, dict):
-                    result["processing_time"] = time.time() - start_time
                     return result
                 else:  # Handle case where result is not a dict (e.g. list or string)
                     return {
@@ -140,7 +133,6 @@ class GeminiOCRModel(BaseOCRModel):
                             if isinstance(result, list)
                             else ([str(result)] if result is not None else [])
                         ),
-                        "processing_time": time.time() - start_time,
                         "error": "Unexpected response format from JSON extraction",
                     }
             else:
@@ -153,7 +145,6 @@ class GeminiOCRModel(BaseOCRModel):
                     error_msg = f"Request issue: {response.prompt_feedback.block_reason}"
                 return {
                     "lines": [],
-                    "processing_time": time.time() - start_time,
                     "error": error_msg,
                 }
 
@@ -162,7 +153,6 @@ class GeminiOCRModel(BaseOCRModel):
             return None  # Or a dict with error info
 
     def process_full_page(self, page_image_base64: str, document_id: str) -> str:
-        start_time = time.time()
         prompt_str = get_prompt(
             "FULL_PAGE", self.model_type, self.prompt_version, document_id=document_id
         )

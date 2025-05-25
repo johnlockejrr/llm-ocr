@@ -1,5 +1,4 @@
 import logging
-import time
 from typing import Any, Dict, List, Optional, Union
 
 from openai import OpenAI
@@ -39,7 +38,6 @@ class OpenAIOCRModel(BaseOCRModel):
 
     def process_single_line(self, image_base64: str) -> Dict[str, Any]:
         """Process a single line image."""
-        start_time = time.time()
         prompt = get_prompt("SINGLE_LINE", self.model_type, self.prompt_version or PromptVersion.V1)
 
         try:
@@ -69,20 +67,17 @@ class OpenAIOCRModel(BaseOCRModel):
                 self.logger.error("Parsed result is None")
                 return {
                     "line": "",
-                    "processing_time": time.time() - start_time,
                     "error": "No result",
                 }
             result = parsed_result.model_dump()
-            result["processing_time"] = time.time() - start_time
             return result
 
         except Exception as e:
             self.logger.error(f"Error processing single line: {str(e)}")
-            return {"line": "", "processing_time": time.time() - start_time, "error": str(e)}
+            return {"line": "", "error": str(e)}
 
     def process_sliding_window(self, images_base64: List[str]) -> Optional[Dict[str, Any]]:
         """Process window of lines."""
-        start_time = time.time()
         content: Any = []
 
         for img_base64 in images_base64:
@@ -113,14 +108,12 @@ class OpenAIOCRModel(BaseOCRModel):
             if len(parsed_result.lines) == 1:
                 # Return single line result
                 line_result = parsed_result.lines[0].model_dump()
-                line_result["processing_time"] = time.time() - start_time
                 return line_result
             else:
                 # Return middle line for sliding window
                 middle_idx = len(images_base64) // 2
                 if middle_idx < len(parsed_result.lines):
                     line_result = parsed_result.lines[middle_idx].model_dump()
-                    line_result["processing_time"] = time.time() - start_time
                     return line_result
                 else:
                     return None

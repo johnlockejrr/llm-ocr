@@ -238,7 +238,6 @@ def ocr_result_factory():
     def create_ocr_result(
         ground_truth: str = "test text",
         extracted: str = "test text", 
-        processing_time: float = 1.0,
         model_name: str = "test-model",
         char_accuracy: float = 1.0,
         word_accuracy: float = 1.0
@@ -253,7 +252,6 @@ def ocr_result_factory():
         return OCRResult(
             ground_truth_text=ground_truth,
             extracted_text=extracted,
-            processing_time=processing_time,
             model_name=model_name,
             metrics=metrics
         )

@@ -3,7 +3,6 @@ OCR Pipeline Module - Focused only on OCR processing with no evaluation.
 """
 
 import logging
-import time
 from typing import Any, Dict, List, Optional
 
 from llm_ocr.processors.alto import ALTOLine
@@ -109,16 +108,13 @@ class OCRPipeline:
 
         for line in lines:
             try:
-                start_time = time.time()
                 # Process line
                 result = model.process_single_line(line.get_base64_image())
-                processing_time = time.time() - start_time
 
                 # Create simple result dictionary
                 ocr_result = {
                     "ground_truth_text": line.text,
                     "extracted_text": result["line"],
-                    "processing_time": processing_time,
                 }
 
                 results.append(ocr_result)
@@ -130,7 +126,6 @@ class OCRPipeline:
                     {
                         "ground_truth_text": line.text,
                         "extracted_text": "",
-                        "processing_time": 0.0,
                         "error": str(e),
                     }
                 )
@@ -173,9 +168,7 @@ class OCRPipeline:
                 # window_texts = [line.text for line in window_lines]
 
                 # Process entire window
-                start_time = time.time()
                 window_result = model.process_sliding_window(window_images)
-                processing_time = time.time() - start_time
 
                 if window_result is not None:
                     # Handle both single result and list of results
@@ -186,7 +179,6 @@ class OCRPipeline:
                                 ocr_result = {
                                     "ground_truth_text": line.text,
                                     "extracted_text": window_result[j]["line"],
-                                    "processing_time": processing_time / len(window_result),
                                 }
                                 results.append(ocr_result)
                     else:
@@ -195,7 +187,6 @@ class OCRPipeline:
                         ocr_result = {
                             "ground_truth_text": window_lines[target_idx].text,
                             "extracted_text": window_result["line"],
-                            "processing_time": processing_time,
                         }
                         results.append(ocr_result)
                 else:
@@ -205,7 +196,6 @@ class OCRPipeline:
                         {
                             "ground_truth_text": lines[i].text,
                             "extracted_text": "",
-                            "processing_time": 0.0,
                             "error": "No result returned from model",
                         }
                     )
@@ -223,7 +213,6 @@ class OCRPipeline:
                     {
                         "ground_truth_text": lines[i].text,
                         "extracted_text": "",
-                        "processing_time": 0.0,
                         "error": str(e),
                     }
                 )
@@ -235,7 +224,6 @@ class OCRPipeline:
                 {
                     "ground_truth_text": lines[len(results)].text,
                     "extracted_text": "",
-                    "processing_time": 0.0,
                     "error": "Missing result",
                 }
             )
@@ -261,18 +249,15 @@ class OCRPipeline:
             raise ValueError("Full page mode requires image in base64 format.")
 
         texts = "\n".join([line.text for line in lines])
-        start_time = time.time()
 
         try:
             extracted_lines = model.process_full_page(image_str, document_id=document_id)
-            processing_time = time.time() - start_time
 
             # Create result dictionary
             return [
                 {
                     "ground_truth_text": texts,
                     "extracted_text": extracted_lines,
-                    "processing_time": processing_time,
                 }
             ]
 
@@ -282,7 +267,6 @@ class OCRPipeline:
                 {
                     "ground_truth_text": texts,
                     "extracted_text": "",
-                    "processing_time": 0.0,
                     "error": str(e),
                 }
             ]

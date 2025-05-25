@@ -90,7 +90,6 @@ class OCREvaluationService:
                 OCRResult(
                     ground_truth_text=result.get("ground_truth_text", ""),
                     extracted_text=result.get("extracted_text", ""),
-                    processing_time=result.get("processing_time", 0.0),
                     metrics=metrics,
                 )
             )
@@ -130,7 +129,6 @@ class OCREvaluationService:
         """
         try:
             metrics: Dict[str, Any] = {
-                "average_processing_time": np.mean([r.processing_time for r in results]),
                 "character_accuracy": np.mean(
                     [r.metrics.char_accuracy if r.metrics else 0.0 for r in results]
                 ),
@@ -224,7 +222,6 @@ class OCREvaluationService:
         except Exception as e:
             self.logger.error(f"Error calculating metrics: {str(e)}")
             return {
-                "average_processing_time": 0.0,
                 "character_accuracy": 0.0,
                 "word_accuracy": 0.0,
                 "old_char_preservation": 0.0,

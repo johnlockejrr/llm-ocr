@@ -1,7 +1,6 @@
 import json
 import logging
 import re
-import time
 from typing import Any, Dict, List, Optional, Union
 
 from together import Together
@@ -98,7 +97,6 @@ class TogetherOCRModel(BaseOCRModel):
 
     def process_single_line(self, image_base64: str) -> Dict[str, Any]:
         """Process a single line image."""
-        start_time = time.time()
         prompt = get_prompt("SINGLE_LINE", self.model_type, self.prompt_version)
 
         try:
@@ -111,23 +109,20 @@ class TogetherOCRModel(BaseOCRModel):
             if response and "choices" in response and response["choices"]:
                 response_text: str = response["choices"][0]["text"]
                 result = self._extract_json_from_response(response_text)
-                result["processing_time"] = time.time() - start_time
                 return result
             else:
                 self.logger.warning("No text content in the response.")
                 return {
                     "line": "",
-                    "processing_time": time.time() - start_time,
                     "error": "No text content in response",
                 }
 
         except Exception as e:
             self.logger.error(f"Error processing single line: {str(e)}")
-            return {"line": "", "processing_time": time.time() - start_time, "error": str(e)}
+            return {"line": "", "error": str(e)}
 
     def process_sliding_window(self, images_base64: List[str]) -> Optional[Dict[str, Any]]:
         """Process window of lines."""
-        start_time = time.time()
         content = []
 
         for img_base64 in images_base64:
@@ -151,7 +146,6 @@ class TogetherOCRModel(BaseOCRModel):
             if response and response.choices:
                 response_text: str = response.choices[0].message.content or ""
                 result = self._extract_json_from_response(response_text)
-                result["processing_time"] = time.time() - start_time
                 return result
             else:
                 self.logger.warning("No text content in the response for sliding window.")

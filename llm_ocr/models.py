@@ -45,7 +45,6 @@ class OCRResult:
 
     ground_truth_text: str
     extracted_text: str
-    processing_time: float
     model_name: Optional[str] = None
     metrics: Optional[OCRMetrics] = None
     error_analysis: Optional[Dict[str, Any]] = None
@@ -81,7 +80,6 @@ class OCRCorrectionResult:
     extracted_text: str
     correction_mode: CorrectionMode
     corrected_text: Union[LineCorrection, ParagraphCorrection]
-    processing_time: float
     model_name: str
     metrics: Optional[Dict[str, Any]] = None
     improvement: Optional[Dict[str, float]] = None

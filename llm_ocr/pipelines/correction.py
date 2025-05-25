@@ -3,7 +3,6 @@ OCR Correction Pipeline - Module for LLM-based OCR correction.
 """
 
 import logging
-import time
 from dataclasses import asdict
 from typing import Any, Callable, Dict, List, Optional, Union
 
@@ -69,19 +68,14 @@ class OCRCorrectionPipeline:
         self.logger.info(f"Running OCR correction with {model_name} in {mode} mode")
 
         try:
-            start_time = time.time()
-
             # Perform correction with mode-specific handling
             corrected_text = self.mode_processors[correction_mode](ocr_text, image_str)
-
-            processing_time = time.time() - start_time
 
             # Create result object
             correction_result = OCRCorrectionResult(
                 extracted_text=ocr_text,
                 correction_mode=correction_mode,
                 corrected_text=corrected_text,
-                processing_time=processing_time,
                 model_name=model_name,
             )
 
@@ -89,7 +83,7 @@ class OCRCorrectionPipeline:
             if ground_truth:
                 self._evaluate_correction_by_mode(ground_truth, ocr_text, correction_result)
 
-            self.logger.info(f"Correction completed in {processing_time:.2f} seconds")
+            self.logger.info("Correction completed")
 
             return self._serialize_result(correction_result)
 
@@ -257,7 +251,6 @@ class OCRCorrectionPipeline:
         serialized: Dict[str, Any] = {
             "extracted_text": result.extracted_text,
             "correction_mode": result.correction_mode.value,
-            "processing_time": result.processing_time,
             "model_name": result.model_name,
         }
 
