@@ -161,3 +161,4 @@ Thumbs.db
 ground_truth/*.jpeg
 ground_truth/*.jpg
 ground_truth/*.png
+.ruff_cache
