@@ -51,6 +51,7 @@ class TestCharacterAccuracyMetric(unittest.TestCase):
         extracted = "Something else."
         # Using Levenshtein distance
         from llm_ocr.evaluators.metrics.utils import levenshtein_distance
+
         distance = levenshtein_distance(ground_truth, extracted)
         max_length = max(len(ground_truth), len(extracted))
         expected = 1 - (distance / max_length)
@@ -61,6 +62,7 @@ class TestCharacterAccuracyMetric(unittest.TestCase):
     def test_levenshtein_distance(self):
         """Test Levenshtein distance calculation."""
         from llm_ocr.evaluators.metrics.utils import levenshtein_distance
+
         self.assertEqual(levenshtein_distance("kitten", "sitting"), 3)
         self.assertEqual(levenshtein_distance("saturday", "sunday"), 3)
         self.assertEqual(levenshtein_distance("", ""), 0)
@@ -70,15 +72,15 @@ class TestCharacterAccuracyMetric(unittest.TestCase):
     def test_case_insensitive_mode(self):
         """Test case-insensitive character accuracy."""
         case_insensitive_metric = CharacterAccuracyMetric(case_sensitive=False)
-        
+
         # Test name property
         self.assertEqual(case_insensitive_metric.name, "char_accuracy_case_insensitive")
-        
+
         # Test that case differences are ignored
         ground_truth = "This Is A Test."
         extracted = "this is a test."
         self.assertEqual(case_insensitive_metric.evaluate(ground_truth, extracted), 1.0)
-        
+
         # Test partial match with case differences
         ground_truth = "This Is A Test."
         extracted = "this is test."  # Missing "a " but same case handling
@@ -276,7 +278,6 @@ class TestErrorAnalysisMetric(unittest.TestCase):
         self.assertIn("і", result["special_char_errors"][1]["special_chars_ground_truth"])
 
 
-
 class TestSimilarityMetric(unittest.TestCase):
     """Tests for SimilarityMetric."""
 
@@ -405,7 +406,6 @@ class TestOCREvaluator(unittest.TestCase):
         self.evaluator.metrics["error_analysis"].evaluate.assert_called_once_with(
             ground_truth, extracted
         )
-
 
     def test_calculate_similarity(self):
         """Test similarity calculation."""

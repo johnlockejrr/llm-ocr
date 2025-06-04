@@ -47,6 +47,15 @@ cp .env.template .env
 # Edit .env and add your API key values
 ```
 
+The following environment variables must be set in your `.env` file:
+
+- `OPENAI_API_KEY`
+- `ANTHROPIC_API_KEY`
+- `GEMINI_API_KEY`
+- `TOGETHER_API_KEY`
+- `DEEP_SEEK_API_KEY`
+- `DEEPINFRA_API_KEY`
+
 ### 2. Basic usage
 
 ```python
@@ -172,11 +181,11 @@ class CustomOCRModel(BaseOCRModel):
     def process_single_line(self, image_base64: str):
         # Implement single line processing
         pass
-    
+
     def process_full_page(self, page_image_base64: str, id: str):
-        # Implement full page processing  
+        # Implement full page processing
         pass
-    
+
     def correct_text(self, text: str, image_base64: str):
         # Implement text correction
         pass
@@ -189,7 +198,7 @@ from llm_ocr.workflow import run_multi_model_workflow
 
 results = run_multi_model_workflow(
     xml_path="data/document.xml",
-    image_path="data/document.jpeg", 
+    image_path="data/document.jpeg",
     ground_truth_path="data/document.txt",
     model_names=["claude-3-7-sonnet-20250219", "gpt-4o-2024-08-06"],
     output_dir="results"
@@ -216,7 +225,7 @@ python -m unittest llm_ocr.evaluators.test_evaluator
 black llm_ocr/
 isort llm_ocr/
 
-# Lint code  
+# Lint code
 flake8 llm_ocr/
 mypy llm_ocr/
 ```

@@ -15,7 +15,7 @@ pip install jupyter
 **Option A: Environment Variables**
 ```bash
 export ANTHROPIC_API_KEY="your-anthropic-key"
-export OPENAI_API_KEY="your-openai-key" 
+export OPENAI_API_KEY="your-openai-key"
 export GEMINI_API_KEY="your-gemini-key"
 export TOGETHER_API_KEY="your-together-key"
 ```
@@ -49,7 +49,7 @@ jupyter notebook workflow_demo.ipynb
 ## 📋 What the Demo Tests
 
 1. **Environment Setup** - Checks API keys and dependencies
-2. **Package Import** - Verifies all modules load correctly  
+2. **Package Import** - Verifies all modules load correctly
 3. **Basic Components** - Tests evaluator and model creation
 4. **Text Correction** - Simple API call to test connectivity
 5. **Full Workflow** - Complete OCR pipeline (optional, requires data)
@@ -80,7 +80,7 @@ jupyter notebook workflow_demo.ipynb
 
 The notebook will show:
 - ✅ API key status for each provider
-- 🤖 Available models and successful connections  
+- 🤖 Available models and successful connections
 - 📝 Text correction examples with before/after metrics
 - 📊 Evaluation results and accuracy improvements
 - 📁 Output files (if full workflow is run)

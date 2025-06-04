@@ -11,7 +11,7 @@ graft docs
 # Include test data (but exclude large images)
 graft ground_truth
 exclude ground_truth/*.jpeg
-exclude ground_truth/*.jpg  
+exclude ground_truth/*.jpg
 exclude ground_truth/*.png
 
 # Exclude build artifacts and caches

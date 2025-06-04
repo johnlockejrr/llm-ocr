@@ -70,7 +70,7 @@ class PromptTemplates:
             """,
             PromptVersion.V2: """
             Task: Extract the OCR text from this 18th century Russian book line.
-            Important: 
+            Important:
             - Preserve all original Old Russian orthography including ѣ, Ѳ, ѳ, ѵ, and ъ characters
             Format: Return ONLY a JSON object with {"line": "your extracted text"}
             No explanations needed.
@@ -174,7 +174,7 @@ class PromptTemplates:
             Extract the OCR text from this full page of an 18th century Russian book.
             Preserve the original Old Russian orthography.
             Process each line independently.
-            
+
             Respond with ONLY a JSON array where each object has a 'line' field containing the corrected text.
             Do not include any additional explanations.
             """,
@@ -182,17 +182,17 @@ class PromptTemplates:
             Extract the OCR text from this full page of an 18th century Russian book.
             Preserve all original Old Russian orthography including ѣ, Ѳ, ѳ, ѵ, and ъ characters.
             Process each line independently, maintaining the exact layout of the page.
-            
+
             Respond with ONLY a JSON array where each object has a 'line' field containing the extracted text.
             Do not include any explanations or formatting.
             """,
             PromptVersion.V3: """
-            You are an expert OCR system specialized in processing 18th century Russian texts. 
+            You are an expert OCR system specialized in processing 18th century Russian texts.
             Your task is to accurately transcribe text from an image of a page from a {book_year} Russian book titled "{book_title}" published in {publication_info}.
             Instructions:
             1. Analyze the entire image thoroughly before beginning transcription
             2. Process the text line by line, maintaining the exact layout of the original page
-            3. Preserve all original Old Russian orthography, including: 
+            3. Preserve all original Old Russian orthography, including:
                 - special characters: ѣ, Ѳ, ѳ, ѵ, і, ї and ъ,
                 - Original punctuation,
                 - Capitalization as it appears in the original text.
@@ -226,7 +226,7 @@ class PromptTemplates:
             Extract the OCR text from this full page of an 18th century Russian book.
             Preserve the original Old Russian orthography.
             Process each line independently.
-            
+
             Respond with ONLY a JSON array where each object has a 'line' field containing the corrected text.
             Do not include any additional explanations.
             """,
@@ -237,17 +237,17 @@ class PromptTemplates:
             - Preserve all original Old Russian orthography (ѣ, Ѳ, ѳ, ѵ, ъ, etc.)
             - Process each line independently, maintaining the exact layout
             - Preserve original punctuation exactly
-            
-            Format: Respond with ONLY a JSON array where each line is represented as {"line": "extracted text"}           
+
+            Format: Respond with ONLY a JSON array where each line is represented as {"line": "extracted text"}
             No explanations or additional text allowed in your response.
             """,
             PromptVersion.V3: """
-            You are an expert OCR system specialized in processing 18th century Russian texts. 
+            You are an expert OCR system specialized in processing 18th century Russian texts.
             Your task is to accurately transcribe text from an image of a page from a {book_year} Russian book titled "{book_title}" published in {publication_info}.
             Instructions:
             1. Analyze the entire image thoroughly before beginning transcription
             2. Process the text line by line, maintaining the exact layout of the original page
-            3. Preserve all original Old Russian orthography, including: 
+            3. Preserve all original Old Russian orthography, including:
                 - Special characters: ѣ, Ѳ, ѳ, ѵ, і, ї and ъ,
                 - Original punctuation,
                 - Capitalization as it appears in the original text.
@@ -293,17 +293,17 @@ class PromptTemplates:
             Format: Return only a JSON array: [{"line": "text1"}, {"line": "text2"}]
             """,
             PromptVersion.V3: """
-            You are an expert OCR system specialized in processing 18th century Russian texts. 
+            You are an expert OCR system specialized in processing 18th century Russian texts.
             Your task is to accurately transcribe text from an image of a page from a {book_year} Russian book titled "{book_title}" published in {publication_info}.
             Instructions:
             1. Analyze the entire image thoroughly before beginning transcription
             2. Process the text line by line, maintaining the exact layout of the original page
-            3. Preserve all original Old Russian orthography, including: 
+            3. Preserve all original Old Russian orthography, including:
                 - Special characters: ѣ, Ѳ, ѳ, ѵ, і, ї and ъ,
                 - Original punctuation,
                 - Capitalization as it appears in the original text.
 
-            Respond ONLY with a JSON array where each object has a 'line' field containing each extracted line of text. 
+            Respond ONLY with a JSON array where each object has a 'line' field containing each extracted line of text.
             Do not include any explanations or additional formatting in your response.
             """,
             PromptVersion.V4: """
@@ -332,19 +332,19 @@ class PromptTemplates:
             Requirements:
             - Preserve original Old Russian orthography
             - Process each line independently
-            Respond ONLY with a JSON array where each object has a 'line' field containing each extracted line of text. 
+            Respond ONLY with a JSON array where each object has a 'line' field containing each extracted line of text.
             No explanations needed.
             """,
             PromptVersion.V2: """
             Task: Extract all text from this 18th century Russian book page.
             Requirements:
             - Preserve all Old Russian characters (ѣ, Ѳ, ѳ, ѵ, ъ, etc.)
-            - Maintain exact line-by-line structure 
+            - Maintain exact line-by-line structure
             - Keep original punctuation
             Format: Return only a JSON array: [{"line": "text1"}, {"line": "text2"}]
             """,
             PromptVersion.V3: """
-            You are an expert OCR system specialized in processing 18th century Russian texts. 
+            You are an expert OCR system specialized in processing 18th century Russian texts.
             Your task is to accurately transcribe text from an image of a page from a {book_year} Russian book titled "{book_title}" published in {publication_info}.
             Instructions:
             1. Analyze the entire image thoroughly before beginning transcription
@@ -353,7 +353,7 @@ class PromptTemplates:
             4. Maintain original punctuation exactly as it appears.
             5. Reproduce capitalization precisely as it appears in the original text.
 
-            Respond ONLY with a JSON array where each object has a 'line' field containing each extracted line of text. 
+            Respond ONLY with a JSON array where each object has a 'line' field containing each extracted line of text.
             Do not include any explanations or additional formatting in your response.
             """,
             PromptVersion.V4: """
@@ -427,7 +427,7 @@ class PromptTemplates:
         ModelType.CLAUDE: {
             PromptVersion.V1: """
             Correct this OCR text from an 18th century Russian book and format it as a single continuous paragraph.
-            
+
             Requirements:
             - Preserve original Old Russian orthography
             - Join hyphenated words at line breaks (e.g., "вне-" + "дряться" -> "внедряться")
@@ -435,15 +435,15 @@ class PromptTemplates:
             - Keep original punctuation
             - Maintain a single continuous paragraph
             - Keep the page number at the start if presents and the catchword at the end if presents
-            
+
             Original text:
             {text}
-            
+
             Return only the corrected continuous text without any markup, explanations, or formatting.
             """,
             PromptVersion.V2: """
             Correct this OCR text from an 18th century Russian book and format it as a single continuous paragraph.
-            
+
             Requirements:
             - Preserve all original Old Russian orthography including ѣ, Ѳ, ѳ, ѵ, and ъ characters
             - Join hyphenated words at line breaks (e.g., "вне-" + "дряться" -> "внедряться")
@@ -451,10 +451,10 @@ class PromptTemplates:
             - Keep original punctuation exactly as it appears
             - Maintain a single continuous paragraph
             - Keep page numbers at the start if present
-            
+
             Original text:
             {text}
-            
+
             Return only the corrected continuous text without any markup, explanations, or formatting.
             """,
         },
@@ -462,7 +462,7 @@ class PromptTemplates:
             PromptVersion.V1: """
             You are an expert in Old Russian text correction.
             Correct this OCR text from an 18th century Russian book and format it as a single continuous paragraph.
-            
+
             Requirements:
             - Preserve original Old Russian orthography
             - Join hyphenated words at line breaks (e.g., "вне-" + "дряться" -> "внедряться")
@@ -470,27 +470,27 @@ class PromptTemplates:
             - Keep original punctuation
             - Maintain a single continuous paragraph
             - Keep the page number at the start if present
-            
+
             Original text:
             {text}
-            
+
             Return only the corrected continuous text without any markup, explanations, or formatting.
             """,
             PromptVersion.V2: """
             You are an expert in Old Russian language, orthography, and historical texts.
-            
+
             Task: Correct and format this OCR-extracted text from an 18th century Russian book.
-            
+
             Requirements:
             - Preserve all original Old Russian orthography (ѣ, Ѳ, ѳ, ѵ, ъ, etc.)
             - Join hyphenated words that break across lines (e.g., "вне-" + "дряться" -> "внедряться")
             - Remove all line breaks to create one continuous paragraph
             - Maintain all original punctuation exactly as it appears in the source
             - Keep any page numbers at the beginning if present
-            
+
             Original text:
             {text}
-            
+
             Respond with ONLY the corrected text as a single paragraph. No explanations or comments.
             """,
         },
@@ -503,25 +503,25 @@ class PromptTemplates:
             - Join hyphenated words at line breaks
             - Remove line breaks
             - Preserve punctuation and page numbers
-            
+
             Original text:
             {text}
-            
+
             Return only the corrected text. No explanations.
             """,
             PromptVersion.V2: """
             Task: Correct this OCR text from an 18th century Russian book.
-            
+
             Requirements:
             - Preserve all Old Russian characters (ѣ, Ѳ, ѳ, ѵ, ъ, etc.)
             - Join split words at line breaks (e.g., "вне-" + "дряться" → "внедряться")
             - Create a single continuous paragraph
             - Keep original punctuation exactly as shown
             - Maintain page numbers if present
-            
+
             Original text:
             {text}
-            
+
             Return only the corrected text without any comments.
             """,
         },
@@ -534,25 +534,25 @@ class PromptTemplates:
             - Join hyphenated words at line breaks
             - Remove line breaks
             - Preserve punctuation and page numbers
-            
+
             Original text:
             {text}
-            
+
             Return only the corrected text. No explanations.
             """,
             PromptVersion.V2: """
             Task: Correct this OCR text from an 18th century Russian book.
-            
+
             Requirements:
             - Preserve all Old Russian characters (ѣ, Ѳ, ѳ, ѵ, ъ, etc.)
             - Join split words at line breaks (e.g., "вне-" + "дряться" → "внедряться")
             - Create a single continuous paragraph
             - Keep original punctuation exactly as shown
             - Maintain page numbers if present
-            
+
             Original text:
             {text}
-            
+
             Return only the corrected text without any comments.
             """,
         },
@@ -563,7 +563,7 @@ class PromptTemplates:
             PromptVersion.V1: """
             Correct this OCR text from an 18th century Russian book.
             Preserve the original paragraph structure while fixing OCR errors.
-            
+
             Requirements:
             - Preserve original Old Russian orthography
             - Join hyphenated words at line breaks within paragraphs (e.g., "вне-" + "дряться" -> "внедряться")
@@ -572,10 +572,10 @@ class PromptTemplates:
             - Keep the page number as a separate line if present
             - Keep the catchword as a separate line if present
             - Each paragraph should be continuous without artificial line breaks
-            
+
             Original text:
             {text}
-            
+
             Return only the corrected text with original paragraph structure, without any markup or explanations.
             Example format:
             44
@@ -587,7 +587,7 @@ class PromptTemplates:
             PromptVersion.V2: """
             Correct this OCR text from an 18th century Russian book.
             Preserve the original paragraph structure while fixing OCR errors.
-            
+
             Requirements:
             - Preserve all original Old Russian orthography including ѣ, Ѳ, ѳ, ѵ, and ъ characters
             - Pay special attention to superscript letters and titlos
@@ -596,10 +596,10 @@ class PromptTemplates:
             - Keep original punctuation and spacing between paragraphs exactly as they appear
             - Preserve page numbers if present
             - Each paragraph should be continuous without artificial line breaks
-            
+
             Original text:
             {text}
-            
+
             Return only the corrected text with original paragraph structure, without any markup or explanations.
             Example format:
             44
@@ -612,7 +612,7 @@ class PromptTemplates:
             PromptVersion.V1: """
             You are an expert in Old Russian text correction.
             Correct this OCR text from an 18th century Russian book while preserving paragraph structure.
-            
+
             Requirements:
             - Preserve original Old Russian orthography
             - Join hyphenated words at line breaks within paragraphs (e.g., "вне-" + "дряться" -> "внедряться")
@@ -620,10 +620,10 @@ class PromptTemplates:
             - Keep original punctuation and spacing between paragraphs
             - Keep the page number if present
             - Each paragraph should be continuous without artificial line breaks
-            
+
             Original text:
             {text}
-            
+
             Return only the corrected text with original paragraph structure, without any markup or explanations.
             Example format:
             44
@@ -632,9 +632,9 @@ class PromptTemplates:
             """,
             PromptVersion.V2: """
             You are an expert in Old Russian language, orthography, and historical texts.
-            
+
             Task: Correct this OCR text from an 18th century Russian book while preserving paragraph structure.
-            
+
             Requirements:
             - Preserve all original Old Russian orthography (ѣ, Ѳ, ѳ, ѵ, ъ, etc.)
             - Pay careful attention to superscript letters, titlos, and abbreviated words
@@ -643,18 +643,18 @@ class PromptTemplates:
             - Preserve all original punctuation and spacing between paragraphs
             - Keep page numbers when present
             - Make each paragraph a continuous text without artificial line breaks
-            
+
             Original text:
             {text}
-            
+
             Respond with ONLY the corrected text with proper paragraph breaks. No explanations or comments.
-            
+
             Example format:
             44
             First paragraph as a continuous line of text...
-            
+
             Second paragraph as a continuous line of text...
-            
+
             Third paragraph as a continuous line of text...
             """,
         },
@@ -667,15 +667,15 @@ class PromptTemplates:
             - Join hyphenated words within paragraphs
             - Maintain paragraph breaks
             - Preserve punctuation, spacing, and page numbers
-            
+
             Original text:
             {text}
-            
+
             Return only corrected text with paragraphs intact.
             """,
             PromptVersion.V2: """
             Task: Correct this OCR text from an 18th century Russian book.
-            
+
             Requirements:
             - Preserve all Old Russian characters (ѣ, Ѳ, ѳ, ѵ, ъ, etc.)
             - Join split words within paragraphs
@@ -683,10 +683,10 @@ class PromptTemplates:
             - Keep original punctuation and spacing
             - Preserve page numbers
             - Each paragraph should be continuous
-            
+
             Original text:
             {text}
-            
+
             Return only the corrected text with paragraph structure intact.
             No comments or explanations.
             """,
