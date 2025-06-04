@@ -5,16 +5,16 @@ from typing import Any, Dict, List, Optional, Union
 
 from together import Together
 
+from llm_ocr.config import settings
 from llm_ocr.llm.base import BaseOCRModel
 from llm_ocr.prompts.prompt import ModelType, PromptVersion, get_prompt
-from llm_ocr.settings import TOGETHER_API_KEY
 
 
 class TogetherOCRModel(BaseOCRModel):
     """Together AI implementation of OCR language model for open source models."""
 
     def __init__(self, model_name: str, prompt_version: PromptVersion):
-        self.client = Together(api_key=TOGETHER_API_KEY)
+        self.client = Together(api_key=settings.TOGETHER_API_KEY)
         self.model_name = model_name
         self.model_type = ModelType.TOGETHER
         self.prompt_version = prompt_version

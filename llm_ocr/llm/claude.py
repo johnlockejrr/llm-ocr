@@ -4,16 +4,16 @@ from typing import Any, Dict, List, Optional, Union
 
 import anthropic
 
+from llm_ocr.config import settings
 from llm_ocr.llm.base import BaseOCRModel
 from llm_ocr.prompts.prompt import ModelType, PromptVersion, get_prompt
-from llm_ocr.settings import ANTHROPIC_API_KEY
 
 
 class ClaudeOCRModel(BaseOCRModel):
     """Claude implementation of OCR language model."""
 
     def __init__(self, model_name: str, prompt_version: PromptVersion):
-        self.client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        self.client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
         self.logger = logging.getLogger(__name__)
         self.model_name = model_name
         self.logger.debug("Model name: %s", model_name)

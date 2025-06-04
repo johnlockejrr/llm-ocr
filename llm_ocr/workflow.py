@@ -326,9 +326,7 @@ class OCRPipelineWorkflow:
                 id=self.id,
             )
 
-            logging.info(
-                f"Processed {len(lines)} lines with mode {mode.value}"
-            )
+            logging.info(f"Processed {len(lines)} lines with mode {mode.value}")
 
             # Add to results structure
             self.ocr_results["ocr_models"][self.ocr_model_name][mode.value] = {
@@ -396,9 +394,7 @@ class OCRPipelineWorkflow:
                 # Add metrics to results
                 self.ocr_results["ocr_models"][self.ocr_model_name][mode]["metrics"] = report
 
-                logging.info(
-                    f"Evaluation completed for mode {mode}"
-                )
+                logging.info(f"Evaluation completed for mode {mode}")
 
                 # Save results after each evaluation
                 self._save_ocr_results()
