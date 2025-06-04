@@ -40,13 +40,11 @@ pip install -e ".[dev]"
 
 ### 1. Set up API keys
 
-Create a `.env` file or set environment variables:
+Copy the `.env.template` file and fill in your API key values:
 
 ```bash
-export ANTHROPIC_API_KEY="your-anthropic-key"
-export OPENAI_API_KEY="your-openai-key" 
-export GEMINI_API_KEY="your-gemini-key"
-export TOGETHER_API_KEY="your-together-key"
+cp .env.template .env
+# Edit .env and add your API key values
 ```
 
 ### 2. Basic usage

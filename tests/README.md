@@ -44,12 +44,11 @@ pytest tests/ --cov=llm_ocr --cov-report=term-missing
 ```
 
 ### Environment Setup for API Tests
-To run API-dependent tests, set these environment variables:
+To run API-dependent tests, copy the `.env.template` file and fill in your API key values:
+
 ```bash
-export ANTHROPIC_API_KEY="your-anthropic-key"
-export OPENAI_API_KEY="your-openai-key"
-export GEMINI_API_KEY="your-gemini-key"
-export TOGETHER_API_KEY="your-together-key"
+cp .env.template .env
+# Edit .env and add your API key values
 ```
 
 ## Test Configuration
