@@ -162,3 +162,7 @@ ground_truth/*.jpeg
 ground_truth/*.jpg
 ground_truth/*.png
 .ruff_cache
+
+# Internal maintenance files
+MAINTENANCE_TASKS.md
+maintenance_tasks.md
