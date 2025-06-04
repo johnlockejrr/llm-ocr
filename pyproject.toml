@@ -84,43 +84,27 @@ warn_unused_configs = true
 disallow_untyped_defs = true
 ignore_missing_imports = false
 
-[tool.mypy."Levenshtein"]
+[[tool.mypy.overrides]]
+module = [
+    "Levenshtein",
+    "cv2",
+    "numpy",
+    "pandas", 
+    "anthropic",
+    "openai",
+    "google.genai",
+    "together",
+    "PIL"
+]
 ignore_missing_imports = true
 
-[tool.mypy."cv2"]
-ignore_missing_imports = true
-
-[tool.mypy."numpy"]
-ignore_missing_imports = true
-
-[tool.mypy."pandas"]
-ignore_missing_imports = true
-
-[tool.mypy."anthropic"]
-ignore_missing_imports = true
-
-[tool.mypy."openai"]
-ignore_missing_imports = true
-
-[tool.mypy."google.genai"]
-ignore_missing_imports = true
-
-[tool.mypy."together"]
-ignore_missing_imports = true
-
-[tool.mypy."PIL"]
-ignore_missing_imports = true
-
-[tool.mypy."llm_ocr.test_metrics"]
-disallow_untyped_defs = false
-
-[tool.mypy."llm_ocr.evaluators.test_metrics"]
-disallow_untyped_defs = false
-
-[tool.mypy."llm_ocr.evaluators.test_evaluator"]
-disallow_untyped_defs = false
-
-[tool.mypy."llm_ocr.pipelines.test_correction"]
+[[tool.mypy.overrides]]
+module = [
+    "llm_ocr.test_metrics",
+    "llm_ocr.evaluators.test_metrics", 
+    "llm_ocr.evaluators.test_evaluator",
+    "llm_ocr.pipelines.test_correction"
+]
 disallow_untyped_defs = false
 
 [tool.pytest.ini_options]

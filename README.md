@@ -1,6 +1,6 @@
 # LLM OCR Package
 
-A LLM-powered OCR evaluation and correction package that supports multiple language models for OCR processing and text correction tasks.
+LLM-powered OCR evaluation and correction package that supports multiple language models for OCR processing and text correction tasks.
 
 ## Features
 
@@ -132,6 +132,7 @@ eval_config = EvaluationConfig(
 ### Input Requirements
 
 Your data folder should contain:
+
 - `{id}.xml`: ALTO XML file with text coordinates
 - `{id}.jpeg`: Corresponding image file
 - `{id}.txt`: Ground truth text (optional, for evaluation)
@@ -201,36 +202,87 @@ results = run_multi_model_workflow(
 
 ## Development
 
+### Environment Setup
+
+```bash
+# Clone and set up development environment
+git clone https://github.com/mary-lev/llm-ocr.git
+cd llm-ocr
+
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install with development dependencies
+pip install -e ".[dev]"
+```
+
 ### Running Tests
 
 ```bash
-# Run all tests
-python -m unittest discover llm_ocr/
+# Activate virtual environment first
+source venv/bin/activate
+
+# Run all tests with coverage
+pytest
+
+# Or use the custom test runner
+python run_tests.py
 
 # Run specific test files
-python -m unittest llm_ocr.test_metrics
-python -m unittest llm_ocr.evaluators.test_evaluator
+pytest tests/unit/test_metrics.py
+pytest tests/integration/test_basic_workflow.py
+
+# Run with verbose output
+pytest -v
+
+# Run with coverage report
+pytest --cov=llm_ocr --cov-report=html
 ```
+
+**Note**: Always activate the virtual environment before running tests to avoid dependency conflicts.
 
 ### Code Quality
 
 ```bash
+# Activate virtual environment first
+source venv/bin/activate
+
 # Format code
-black llm_ocr/
-isort llm_ocr/
+python -m black llm_ocr/
+python -m isort llm_ocr/
 
 # Lint code
-flake8 llm_ocr/
-mypy llm_ocr/
+python -m ruff check llm_ocr/
+
+# Type checking (requires Python 3.10+ target)
+python -m mypy llm_ocr/ --python-version=3.10
+
+# Run all quality checks
+python run_tests.py  # Includes tests + quality checks
+```
+
+### Pre-commit Hooks
+
+This project uses pre-commit hooks to maintain code quality:
+
+```bash
+# Install pre-commit hooks
+pre-commit install
+
+# Run hooks manually
+pre-commit run --all-files
 ```
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes and add tests
-4. Run the test suite: `python -m unittest discover`
-5. Submit a pull request
+3. Set up development environment: `source venv/bin/activate && pip install -e ".[dev]"`
+4. Make your changes and add tests
+5. Run the test suite: `pytest` or `python run_tests.py`
+6. Ensure code quality: `pre-commit run --all-files`
+7. Submit a pull request
 
 ## License
 
