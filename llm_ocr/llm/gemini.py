@@ -5,9 +5,9 @@ from typing import Any, Dict, List, Optional, Union
 import google.generativeai as genai
 from google.generativeai.types import PartDict
 
+from llm_ocr.config import settings
 from llm_ocr.llm.base import BaseOCRModel
 from llm_ocr.prompts.prompt import ModelType, PromptVersion, get_prompt
-from llm_ocr.settings import GEMINI_API_KEY
 
 # If you need more specific types from the library for hinting:
 # from google.generativeai.types import PartDict # Example
@@ -23,7 +23,7 @@ class GeminiOCRModel(BaseOCRModel):
     """Gemini implementation of OCR language model."""
 
     def __init__(self, model_name: str, prompt_version: PromptVersion):
-        genai.configure(api_key=GEMINI_API_KEY)
+        genai.configure(api_key=settings.GEMINI_API_KEY)
         self.model = genai.GenerativeModel(model_name)
         self.model_name = model_name  # Keep if needed for logging or other purposes
         self.model_type = ModelType.GEMINI

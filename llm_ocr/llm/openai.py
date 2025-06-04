@@ -4,9 +4,9 @@ from typing import Any, Dict, List, Optional, Union
 from openai import OpenAI
 from pydantic import BaseModel  # type: ignore
 
+from llm_ocr.config import settings
 from llm_ocr.llm.base import BaseOCRModel
 from llm_ocr.prompts.prompt import ModelType, PromptVersion, get_prompt
-from llm_ocr.settings import OPENAI_API_KEY
 
 
 # Pydantic models for response parsing
@@ -30,7 +30,7 @@ class OpenAIOCRModel(BaseOCRModel):
     """OpenAI implementation of OCR language model."""
 
     def __init__(self, model_name: str, prompt_version: Optional[PromptVersion] = None):
-        self.client = OpenAI(api_key=OPENAI_API_KEY)
+        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
         self.model_name = model_name
         self.model_type = ModelType.GPT
         self.prompt_version = prompt_version

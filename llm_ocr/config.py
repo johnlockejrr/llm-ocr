@@ -3,9 +3,30 @@ Configuration classes for OCR language models and evaluation.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+
+from pydantic_settings import BaseSettings
 
 from llm_ocr.prompts.prompt import ModelType, PromptVersion
+
+
+class EnvSettings(BaseSettings):
+    """Application environment settings loaded from .env."""
+
+    OPENAI_API_KEY: str = ""
+    ANTHROPIC_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+    TOGETHER_API_KEY: str = ""
+    DEEP_SEEK_API_KEY: Optional[str] = None
+    DEEPINFRA_API_KEY: Optional[str] = None
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+
+
+# Single instance to be used across modules
+settings = EnvSettings()
 
 # Default configuration parameters
 DEFAULT_MODEL_PARAMS = {
