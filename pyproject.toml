@@ -87,7 +87,6 @@ addopts = [
     "--strict-config",
     "--disable-warnings",
     "--cov=llm_ocr",
-    "--cov-report=html",
     "--cov-report=term-missing",
     "--cov-fail-under=10",
 ]

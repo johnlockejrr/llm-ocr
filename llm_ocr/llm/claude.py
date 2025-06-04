@@ -14,13 +14,13 @@ class ClaudeOCRModel(BaseOCRModel):
 
     def __init__(self, model_name: str, prompt_version: PromptVersion):
         self.client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        self.model_name = model_name
-        print(f"Model name: {model_name}")
-        self.model_type = ModelType.CLAUDE
-        print(f"Model type: {self.model_type}")
-        self.prompt_version = prompt_version
-        print(f"Prompt version: {self.prompt_version}")
         self.logger = logging.getLogger(__name__)
+        self.model_name = model_name
+        self.logger.debug("Model name: %s", model_name)
+        self.model_type = ModelType.CLAUDE
+        self.logger.debug("Model type: %s", self.model_type)
+        self.prompt_version = prompt_version
+        self.logger.debug("Prompt version: %s", self.prompt_version)
 
     def _get_response_text(self, blocks: list[Any]) -> str:
         """Extract all .text from TextBlocks only, concatenate."""

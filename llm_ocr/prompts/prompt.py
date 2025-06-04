@@ -1,9 +1,12 @@
 """Module containing all prompts used in the OCR system with model-specific versioning."""
 
 import json
+import logging
 import os
 from enum import Enum, auto
 from typing import Any, Dict
+
+logger = logging.getLogger(__name__)
 
 
 class ModelType(Enum):
@@ -733,7 +736,7 @@ def get_prompt(
 
     # Format the prompt with kwargs if provided
     if kwargs:
-        print(f"Formatting prompt with kwargs: {prompt_template.format(**kwargs)}")
+        logger.debug("Formatting prompt with kwargs: %s", prompt_template.format(**kwargs))
         return str(prompt_template.format(**kwargs))
 
     return str(prompt_template)
@@ -764,7 +767,9 @@ def get_document_metadata(document_id: str) -> Dict[str, Any]:
     for book in dataset.get("books", []):
         # Check if the document_id is in the image_ids list
         if document_id in book.get("image_ids", []):
-            print(f"Found document ID {document_id} in book: {book.get('title', 'Unknown Title')}")
+            logger.debug(
+                "Found document ID %s in book: %s", document_id, book.get("title", "Unknown Title")
+            )
             # Create metadata dictionary with all relevant fields
             metadata = {
                 "book_title": book.get("title", ""),

@@ -40,7 +40,7 @@ pytest tests/ -m "requires_api"
 
 ### Test Coverage
 ```bash
-pytest tests/ --cov=llm_ocr --cov-report=html --cov-report=term-missing
+pytest tests/ --cov=llm_ocr --cov-report=term-missing
 ```
 
 ### Environment Setup for API Tests
@@ -83,7 +83,7 @@ pytest tests/unit/
 pytest tests/integration/
 
 # With coverage
-pytest --cov=llm_ocr --cov-report=html
+pytest --cov=llm_ocr --cov-report=term-missing
 
 # Parallel execution
 pytest -n 4

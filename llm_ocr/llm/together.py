@@ -26,7 +26,7 @@ class TogetherOCRModel(BaseOCRModel):
     def _make_api_request(self, prompt: str, image_data: Union[str, List[str]]) -> Dict[str, Any]:
         """Make request to Together AI API using the official library."""
         # Combine prompt with image(s)
-        print(f"Image data: {type(image_data)}, {len(image_data)}")
+        self.logger.debug("Image data: %s, %d", type(image_data), len(image_data))
 
         try:
             response = self.client.chat.completions.create(
@@ -161,7 +161,7 @@ class TogetherOCRModel(BaseOCRModel):
             "FULL_PAGE", self.model_type, self.prompt_version, document_id=document_id
         )
         self.logger.info(f"Processing full page with ID: {document_id}")
-        print(f"Prompt: {prompt}")
+        self.logger.debug("Prompt: %s", prompt)
 
         try:
             response = self._make_api_request(prompt, page_image_base64)

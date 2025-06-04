@@ -1,4 +1,6 @@
 # in llm_ocr/factory.py
+import logging
+
 from llm_ocr.llm.base import BaseOCRModel
 from llm_ocr.llm.claude import ClaudeOCRModel
 from llm_ocr.llm.gemini import GeminiOCRModel
@@ -6,6 +8,8 @@ from llm_ocr.llm.openai import OpenAIOCRModel
 from llm_ocr.llm.together import TogetherOCRModel
 from llm_ocr.prompts.prompt import ModelType, PromptVersion
 from llm_ocr.settings import ANTHROPIC_API_KEY, OPENAI_API_KEY
+
+logger = logging.getLogger(__name__)
 
 api_keys = {"anthropic": ANTHROPIC_API_KEY, "openai": OPENAI_API_KEY}
 
@@ -66,23 +70,23 @@ def create_model(model_name: str, prompt_version: PromptVersion) -> BaseOCRModel
     """
     # Get model type from name
     model_type = get_model_type(model_name)
-    print(f"Model type for '{model_name}': {model_type}")
+    logger.debug("Model type for '%s': %s", model_name, model_type)
 
     # Create appropriate config
     if model_type == ModelType.CLAUDE:
-        print("Creating Claude model...")
+        logger.debug("Creating Claude model")
         return ClaudeOCRModel(model_name=model_name, prompt_version=prompt_version)
 
     elif model_type == ModelType.GPT:
-        print("Creating OpenAI model...")
+        logger.debug("Creating OpenAI model")
         return OpenAIOCRModel(model_name=model_name, prompt_version=prompt_version)
 
     elif model_type == ModelType.GEMINI:
-        print("Creating Gemini model...")
+        logger.debug("Creating Gemini model")
         return GeminiOCRModel(model_name=model_name, prompt_version=prompt_version)
 
     elif model_type == ModelType.TOGETHER:
-        print("Creating Together model...")
+        logger.debug("Creating Together model")
         return TogetherOCRModel(model_name=model_name, prompt_version=prompt_version)
 
     else:
