@@ -14,12 +14,6 @@ A LLM-powered OCR evaluation and correction package that supports multiple langu
 
 ## Installation
 
-### Using pip (recommended)
-
-```bash
-pip install llm-ocr
-```
-
 ### From source
 
 ```bash
