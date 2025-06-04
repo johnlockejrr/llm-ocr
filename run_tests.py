@@ -76,7 +76,7 @@ def main():
         cmd.append("-v")
     
     if args.coverage:
-        cmd.extend(["--cov=llm_ocr", "--cov-report=html", "--cov-report=term-missing"])
+        cmd.extend(["--cov=llm_ocr", "--cov-report=term-missing"])
     
     if args.parallel:
         cmd.extend(["-n", str(args.parallel)])
@@ -87,8 +87,6 @@ def main():
     # Run tests
     success = run_command(cmd, f"Running {args.type} tests")
     
-    if args.coverage and success:
-        print("\nCoverage report generated in htmlcov/index.html")
     
     # Additional quality checks
     if args.type == "all":
