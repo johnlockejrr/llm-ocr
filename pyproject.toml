@@ -51,7 +51,7 @@ dev = [
     "isort>=5.10.0",
     "flake8>=5.0.0",
     "mypy>=1.0.0",
-    "jinja2<3.1",
+    "pre-commit>=2.20.0",
 ]
 
 [project.urls]
@@ -80,7 +80,48 @@ line_length = 100
 python_version = "3.8"
 warn_return_any = true
 warn_unused_configs = true
+
 disallow_untyped_defs = true
+ignore_missing_imports = false
+
+[tool.mypy."Levenshtein"]
+ignore_missing_imports = true
+
+[tool.mypy."cv2"]
+ignore_missing_imports = true
+
+[tool.mypy."numpy"]
+ignore_missing_imports = true
+
+[tool.mypy."pandas"]
+ignore_missing_imports = true
+
+[tool.mypy."anthropic"]
+ignore_missing_imports = true
+
+[tool.mypy."openai"]
+ignore_missing_imports = true
+
+[tool.mypy."google.genai"]
+ignore_missing_imports = true
+
+[tool.mypy."together"]
+ignore_missing_imports = true
+
+[tool.mypy."PIL"]
+ignore_missing_imports = true
+
+[tool.mypy."llm_ocr.test_metrics"]
+disallow_untyped_defs = false
+
+[tool.mypy."llm_ocr.evaluators.test_metrics"]
+disallow_untyped_defs = false
+
+[tool.mypy."llm_ocr.evaluators.test_evaluator"]
+disallow_untyped_defs = false
+
+[tool.mypy."llm_ocr.pipelines.test_correction"]
+disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -97,7 +138,7 @@ addopts = [
 ]
 markers = [
     "unit: Unit tests",
-    "integration: Integration tests", 
+    "integration: Integration tests",
     "performance: Performance tests",
     "slow: Slow running tests",
     "requires_api: Tests that require API keys",

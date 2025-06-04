@@ -78,7 +78,7 @@ pytest
 # Unit tests only
 pytest tests/unit/
 
-# Integration tests only  
+# Integration tests only
 pytest tests/integration/
 
 # With coverage
@@ -129,7 +129,7 @@ Use pytest markers to categorize and select tests:
 
 ```python
 @pytest.mark.unit          # Unit tests
-@pytest.mark.integration   # Integration tests  
+@pytest.mark.integration   # Integration tests
 @pytest.mark.performance   # Performance tests
 @pytest.mark.slow          # Slow-running tests
 @pytest.mark.requires_api  # Tests requiring API keys
@@ -207,18 +207,18 @@ from llm_ocr.your_module import YourClass
 
 class TestYourClass:
     """Test YourClass functionality."""
-    
+
     def test_basic_functionality(self):
         """Test basic functionality."""
         # Arrange
         instance = YourClass()
-        
+
         # Act
         result = instance.method()
-        
+
         # Assert
         assert result == expected_value
-    
+
     @pytest.mark.parametrize("input,expected", [
         ("input1", "output1"),
         ("input2", "output2"),
@@ -236,7 +236,7 @@ def test_with_fixtures(self, ocr_evaluator, sample_text_pairs):
     """Test using shared fixtures."""
     for pair in sample_text_pairs:
         result = ocr_evaluator.evaluate_line(
-            pair["ground_truth"], 
+            pair["ground_truth"],
             pair["extracted"]
         )
         assert result.char_accuracy >= 0.0
@@ -253,7 +253,7 @@ def test_with_mock_api(self, mock_anthropic):
     mock_response = MagicMock()
     mock_response.content = [MagicMock(text="test response")]
     mock_anthropic.return_value.messages.create.return_value = mock_response
-    
+
     # Your test code here
 ```
 
