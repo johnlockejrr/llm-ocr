@@ -6,8 +6,8 @@ This directory contains a Jupyter notebook (`workflow_demo.ipynb`) that demonstr
 
 ### 1. Install Dependencies
 ```bash
-pip install -r requirements.txt
-pip install jupyter python-dotenv  # For notebook and environment variables
+pip install -e .[dev]
+pip install jupyter
 ```
 
 ### 2. Set Up API Keys

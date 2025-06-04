@@ -32,11 +32,14 @@ dependencies = [
     "numpy>=1.21.0",
     "Pillow>=9.0.0",
     "opencv-python>=4.5.0",
+    "Levenshtein>=0.26.1",
     "anthropic>=0.20.0",
     "openai>=1.0.0",
     "google-genai>=0.3.0",
+    "google-generativeai>=0.8.4",
     "together>=0.2.0",
     "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.optional-dependencies]
