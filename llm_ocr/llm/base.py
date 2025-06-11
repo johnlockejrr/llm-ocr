@@ -16,23 +16,58 @@ class BaseOCRModel(ABC):
         self.logger = logging.getLogger(self.__class__.__name__)
 
     @abstractmethod
-    def process_single_line(self, image_base64: str) -> Dict[str, Any]:
-        """Process a single line image."""
+    def process_single_line(self, prompt: str, image_base64: str) -> Dict[str, Any]:
+        """Process a single line image with pre-built prompt.
+
+        Args:
+            prompt: The formatted prompt text
+            image_base64: Base64 encoded image string
+
+        Returns:
+            Parsed JSON response as dict
+        """
         pass
 
     @abstractmethod
-    def process_sliding_window(self, images_base64: List[str]) -> Optional[Dict[str, Any]]:
-        """Process a window of line images."""
+    def process_sliding_window(
+        self, prompt: str, images_base64: List[str]
+    ) -> Optional[Dict[str, Any]]:
+        """Process a window of line images with pre-built prompt.
+
+        Args:
+            prompt: The formatted prompt text
+            images_base64: List of base64 encoded image strings
+
+        Returns:
+            Parsed JSON response as dict or None if failed
+        """
         pass
 
     @abstractmethod
-    def process_full_page(self, page_image_base64: str, document_id: str) -> str:
-        """Process a full page image."""
+    def process_full_page(self, prompt: str, page_image_base64: str) -> str:
+        """Process a full page image with pre-built prompt.
+
+        Args:
+            prompt: The formatted prompt text
+            page_image_base64: Base64 encoded page image string
+
+        Returns:
+            Extracted text or JSON string
+        """
         pass
 
     @abstractmethod
-    def correct_text(self, text: str, image_base64: str, mode: str = "line") -> str:
-        """Correct OCR text with the image as context."""
+    def correct_text(self, prompt: str, text: str, image_base64: str) -> str:
+        """Correct OCR text with pre-built prompt.
+
+        Args:
+            prompt: The formatted prompt text
+            text: OCR text to correct
+            image_base64: Base64 encoded image for context
+
+        Returns:
+            Corrected text
+        """
         pass
 
     def _extract_json_from_response(self, response_text: str) -> Union[Dict[Any, Any], List[Any]]:

@@ -1,5 +1,6 @@
 # in llm_ocr/factory.py
 import logging
+from typing import Optional
 
 from llm_ocr.config import settings
 from llm_ocr.llm.base import BaseOCRModel
@@ -57,13 +58,13 @@ def get_model_type(model_name: str) -> ModelType:
         return ModelType.TOGETHER
 
 
-def create_model(model_name: str, prompt_version: PromptVersion) -> BaseOCRModel:
+def create_model(model_name: str, prompt_version: Optional[PromptVersion] = None) -> BaseOCRModel:
     """
     Create a model instance based on model name.
 
     Args:
         model_name: Name of the model (e.g., "claude-3-7-sonnet-20250219")
-        prompt_version: Version of the prompt to use (optional)
+        prompt_version: Version of the prompt to use (deprecated, handled by pipeline)
 
     Returns:
         Model instance
@@ -72,22 +73,22 @@ def create_model(model_name: str, prompt_version: PromptVersion) -> BaseOCRModel
     model_type = get_model_type(model_name)
     logger.debug("Model type for '%s': %s", model_name, model_type)
 
-    # Create appropriate config
+    # Create appropriate config (prompt_version is handled by the pipeline, not individual models)
     if model_type == ModelType.CLAUDE:
         logger.debug("Creating Claude model")
-        return ClaudeOCRModel(model_name=model_name, prompt_version=prompt_version)
+        return ClaudeOCRModel(model_name=model_name)
 
     elif model_type == ModelType.GPT:
         logger.debug("Creating OpenAI model")
-        return OpenAIOCRModel(model_name=model_name, prompt_version=prompt_version)
+        return OpenAIOCRModel(model_name=model_name)
 
     elif model_type == ModelType.GEMINI:
         logger.debug("Creating Gemini model")
-        return GeminiOCRModel(model_name=model_name, prompt_version=prompt_version)
+        return GeminiOCRModel(model_name=model_name)
 
     elif model_type == ModelType.TOGETHER:
         logger.debug("Creating Together model")
-        return TogetherOCRModel(model_name=model_name, prompt_version=prompt_version)
+        return TogetherOCRModel(model_name=model_name)
 
     else:
         raise ValueError(f"Unsupported model type for '{model_name}'")

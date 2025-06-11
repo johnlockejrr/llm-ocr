@@ -6,6 +6,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from llm_ocr.processors.alto import ALTOLine
+from llm_ocr.prompts.prompt_builder import PromptBuilder, PromptType, PromptVersion
 
 from ..config import WINDOW_SIZE, EvaluationConfig
 from ..evaluators.evaluation import OCREvaluationService
@@ -21,12 +22,17 @@ class OCRPipeline:
         self,
         model: BaseOCRModel,
         evaluator: OCREvaluator,
+        prompt_version: PromptVersion = PromptVersion.V1,
         config: Optional[EvaluationConfig] = None,
     ):
         self.model = model
         self.evaluator = evaluator
+        self.prompt_version = prompt_version
         self.config = config or EvaluationConfig()
         self.logger = logging.getLogger(self.__class__.__name__)
+
+        # Initialize prompt builder for generating prompts
+        self.prompt_builder = PromptBuilder()
 
         # Use OCREvaluationService for comprehensive evaluation functionality
         self.evaluation_service = OCREvaluationService(self.config)
@@ -100,16 +106,25 @@ class OCRPipeline:
         Args:
             model: OCR model
             lines: List of Line objects
+            document_id: Document ID for metadata enrichment
 
         Returns:
             List of OCR result dictionaries
         """
         results = []
 
+        # Create prompt once for all lines
+        prompt = self.prompt_builder.build_prompt(
+            mode="single_line",
+            prompt_type=PromptType.STRUCTURED,
+            version=self.prompt_version,
+            document_id=document_id,
+        )
+
         for line in lines:
             try:
-                # Process line
-                result = model.process_single_line(line.get_base64_image())
+                # Process line with pre-built prompt
+                result = model.process_single_line(prompt, line.get_base64_image())
 
                 # Create simple result dictionary
                 ocr_result = {
@@ -146,6 +161,7 @@ class OCRPipeline:
             model: OCR model
             lines: List of Line objects
             image_str: Unused for sliding window mode
+            document_id: Document ID for metadata enrichment
 
         Returns:
             List of OCR result dictionaries
@@ -153,6 +169,14 @@ class OCRPipeline:
         results = []
         window_size = WINDOW_SIZE
         half_window = window_size // 2
+
+        # Create prompt once for all windows
+        prompt = self.prompt_builder.build_prompt(
+            mode="sliding_window",
+            prompt_type=PromptType.STRUCTURED,
+            version=self.prompt_version,
+            document_id=document_id,
+        )
 
         # Process all lines in batches
         i = 0
@@ -165,10 +189,9 @@ class OCRPipeline:
                 # Get window lines
                 window_lines = lines[window_start:window_end]
                 window_images = [line.get_base64_image() for line in window_lines]
-                # window_texts = [line.text for line in window_lines]
 
-                # Process entire window
-                window_result = model.process_sliding_window(window_images)
+                # Process entire window with pre-built prompt
+                window_result = model.process_sliding_window(prompt, window_images)
 
                 if window_result is not None:
                     # Handle both single result and list of results
@@ -250,8 +273,17 @@ class OCRPipeline:
 
         texts = "\n".join([line.text for line in lines])
 
+        # Create prompt with document metadata
+        prompt = self.prompt_builder.build_prompt(
+            mode="full_page",
+            prompt_type=PromptType.STRUCTURED,
+            version=self.prompt_version,
+            document_id=document_id,
+        )
+
         try:
-            extracted_lines = model.process_full_page(image_str, document_id=document_id)
+            # Process with pre-built prompt
+            extracted_lines = model.process_full_page(prompt, image_str)
 
             # Create result dictionary
             return [
