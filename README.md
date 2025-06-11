@@ -61,7 +61,7 @@ from llm_ocr.prompts.prompt import PromptVersion
 workflow = OCRPipelineWorkflow(
     id="document_001",
     folder="ground_truth",  # Contains .xml, .jpeg files
-    model_name="claude-3-7-sonnet-20250219",
+    ocr_model_name="claude-3-7-sonnet-20250219",
     modes=[ProcessingMode.FULL_PAGE],
     prompt_version=PromptVersion.V3
 )
@@ -82,6 +82,7 @@ workflow.evaluate_correction()
 
 - **Pipelines** (`llm_ocr/pipelines/`): OCR and correction processing workflows
 - **LLM Models** (`llm_ocr/llm/`): Multi-provider LLM support with unified interface
+- **Prompts** (`llm_ocr/prompts/`): Modular prompt generation with version control and context enrichment
 - **Evaluators** (`llm_ocr/evaluators/`): Comprehensive metrics and evaluation framework
 - **Processors** (`llm_ocr/processors/`): Input format handling (ALTO XML)
 - **Workflow** (`llm_ocr/workflow.py`): Main orchestration and result management
@@ -98,6 +99,131 @@ workflow.evaluate_correction()
 - **GPT-4**: OpenAI's GPT-4 models
 - **Gemini**: Google's Gemini models
 - **Together AI**: Various open-source models via Together
+
+## Prompt System
+
+The package features a modular prompt generation system that allows for flexible experimentation with different prompt strategies and automatic context enrichment.
+
+### Prompt Versions
+
+Different prompt versions are available for various use cases and languages:
+
+- **V1**: Basic OCR prompts without additional context
+- **V2**: Enhanced with historical book metadata (year, title)
+- **V3**: Advanced context with improved instructions
+- **V4**: Russian language optimized prompts
+
+```python
+from llm_ocr.prompts.prompt import PromptVersion
+
+# Use different prompt versions
+workflow = OCRPipelineWorkflow(
+    id="document_001",
+    folder="ground_truth",
+    ocr_model_name="claude-3-7-sonnet-20250219",
+    prompt_version=PromptVersion.V2,  # Will include book metadata context
+    modes=[ProcessingMode.FULL_PAGE]
+)
+```
+
+### Prompt Types and Modes
+
+The system supports different output formats and processing modes:
+
+```python
+from llm_ocr.prompts.prompt_builder import PromptBuilder, PromptType, PromptVersion
+
+builder = PromptBuilder()
+
+# Structured JSON output for single line processing
+structured_prompt = builder.build_prompt(
+    mode="single_line",
+    prompt_type=PromptType.STRUCTURED,  # JSON format
+    version=PromptVersion.V3
+)
+
+# Simple text output for full page processing
+simple_prompt = builder.build_prompt(
+    mode="full_page", 
+    prompt_type=PromptType.SIMPLE,  # Plain text format
+    version=PromptVersion.V1
+)
+```
+
+### Automatic Metadata Enrichment
+
+When document metadata is available, prompts can be automatically enriched with context:
+
+```python
+from llm_ocr.prompts.prompt_builder import PromptBuilder, PromptType, PromptVersion
+
+builder = PromptBuilder()
+
+# Automatic enrichment using document ID
+enriched_prompt = builder.build_prompt(
+    mode="single_line",
+    prompt_type=PromptType.STRUCTURED,
+    version=PromptVersion.V2,
+    document_id="historical_doc_001"  # Auto-loads book metadata
+)
+
+# Manual context variables
+manual_prompt = builder.build_prompt(
+    mode="sliding_window",
+    prompt_type=PromptType.STRUCTURED, 
+    version=PromptVersion.V2,
+    book_title="История государства Российского",
+    book_year="1767"
+)
+```
+
+### Custom Prompt Configuration
+
+For advanced users, prompts can be fully customized via JSON configuration:
+
+```python
+# Create custom prompt builder with custom config
+custom_builder = PromptBuilder(
+    config_path="path/to/custom_prompts.json",
+    metadata_path="path/to/document_metadata.json"
+)
+
+# Use convenience functions for common cases
+from llm_ocr.prompts.prompt_builder import get_prompt, PromptType, PromptVersion
+
+prompt = get_prompt(
+    mode="correction",
+    prompt_type=PromptType.SIMPLE,
+    version=PromptVersion.V4,
+    book_title="Тестовая книга"
+)
+```
+
+### Prompt Configuration Format
+
+Custom prompt configurations use JSON format with modular components:
+
+```json
+{
+  "components": {
+    "base_ocr": "Extract OCR text from 18th century Russian book",
+    "orthography": "Preserve ѣ, Ѳ, ѳ, ѵ, ъ characters",
+    "json_format": "Respond with JSON: {\"line\": \"text\"}"
+  },
+  "context_enrichment": {
+    "v1": "",
+    "v2": " from {book_year} book \"{book_title}\"",
+    "v3": " processing \"{book_title}\" ({book_year})",
+    "v4": " обрабатываете \"{book_title}\" {book_year} года"
+  },
+  "mode_instructions": {
+    "single_line": "Process single line",
+    "sliding_window": "Process sliding window", 
+    "full_page": "Process full page",
+    "correction": "Correct OCR text"
+  }
+}
+```
 
 ## Configuration
 

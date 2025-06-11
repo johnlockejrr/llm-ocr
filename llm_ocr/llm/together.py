@@ -1,3 +1,5 @@
+"""Together AI OCR Model Implementation - Simplified without prompt logic."""
+
 import json
 import logging
 import re
@@ -7,17 +9,14 @@ from together import Together
 
 from llm_ocr.config import settings
 from llm_ocr.llm.base import BaseOCRModel
-from llm_ocr.prompts.prompt import ModelType, PromptVersion, get_prompt
 
 
 class TogetherOCRModel(BaseOCRModel):
     """Together AI implementation of OCR language model for open source models."""
 
-    def __init__(self, model_name: str, prompt_version: PromptVersion):
+    def __init__(self, model_name: str):
+        super().__init__(model_name)
         self.client = Together(api_key=settings.TOGETHER_API_KEY)
-        self.model_name = model_name
-        self.model_type = ModelType.TOGETHER
-        self.prompt_version = prompt_version
         self.logger = logging.getLogger(__name__)
         self.max_width = 800
         self.max_height = 1000
@@ -95,9 +94,8 @@ class TogetherOCRModel(BaseOCRModel):
         self.logger.warning("Could not extract JSON from response")
         return {"line": response_text.strip(), "confidence": 0.0}
 
-    def process_single_line(self, image_base64: str) -> Dict[str, Any]:
-        """Process a single line image."""
-        prompt = get_prompt("SINGLE_LINE", self.model_type, self.prompt_version)
+    def process_single_line(self, prompt: str, image_base64: str) -> Dict[str, Any]:
+        """Process a single line image with pre-built prompt."""
 
         try:
 
@@ -121,15 +119,16 @@ class TogetherOCRModel(BaseOCRModel):
             self.logger.error(f"Error processing single line: {str(e)}")
             return {"line": "", "error": str(e)}
 
-    def process_sliding_window(self, images_base64: List[str]) -> Optional[Dict[str, Any]]:
-        """Process window of lines."""
+    def process_sliding_window(
+        self, prompt: str, images_base64: List[str]
+    ) -> Optional[Dict[str, Any]]:
+        """Process window of lines with pre-built prompt."""
         content = []
 
         for img_base64 in images_base64:
             content.append(
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_base64}"}}
             )
-        prompt = get_prompt("SLIDING_WINDOW", self.model_type, self.prompt_version)
         content.append({"type": "text", "text": prompt})
 
         try:
@@ -155,12 +154,8 @@ class TogetherOCRModel(BaseOCRModel):
             self.logger.error(f"Error processing sliding window: {str(e)}")
             return None
 
-    def process_full_page(self, page_image_base64: str, document_id: str) -> str:
-        """Process full page."""
-        prompt = get_prompt(
-            "FULL_PAGE", self.model_type, self.prompt_version, document_id=document_id
-        )
-        self.logger.info(f"Processing full page with ID: {document_id}")
+    def process_full_page(self, prompt: str, page_image_base64: str) -> str:
+        """Process full page with pre-built prompt."""
         self.logger.debug("Prompt: %s", prompt)
 
         try:
@@ -237,9 +232,8 @@ class TogetherOCRModel(BaseOCRModel):
             self.logger.error(f"Error processing full page: {str(e)}")
             return ""
 
-    def correct_text(self, text: str, image_base64: str, mode: str = "line") -> str:
-        """Correct OCR text and format as a single paragraph."""
-        prompt = get_prompt("TEXT_CORRECTION", self.model_type, self.prompt_version, text=text)
+    def correct_text(self, prompt: str, text: str, image_base64: str) -> str:
+        """Correct OCR text with pre-built prompt."""
 
         try:
             # Send the request
@@ -256,45 +250,3 @@ class TogetherOCRModel(BaseOCRModel):
         except Exception as e:
             self.logger.error(f"Error correcting text: {str(e)}")
             return text  # Return original on error
-
-    def correct_text_with_paragraphs(self, text: str, image_base64: str) -> Union[str, List[str]]:
-        """Correct OCR text preserving paragraph structure."""
-        prompt = get_prompt(
-            "TEXT_CORRECTION_WITH_PARAGRAPHS", self.model_type, self.prompt_version, text=text
-        )
-
-        try:
-            # Send the request directly with image_base64 (removed _prepare_image_data call)
-            response = self._make_api_request(prompt, image_base64)
-
-            if not response or "choices" not in response or not response["choices"]:
-                self.logger.warning("No text content in the response for paragraph correction.")
-                # Fall back to original text
-                if "\n\n" in text:
-                    return text.split("\n\n")
-                elif "\n" in text:
-                    return text.split("\n")
-                else:
-                    return text
-
-            response_text: str = response["choices"][0]["text"]
-            corrected_text = response_text.strip()
-
-            # Split into paragraphs
-            if "\n\n" in corrected_text:
-                return corrected_text.split("\n\n")
-            elif "\n" in corrected_text:
-                return corrected_text.split("\n")
-            else:
-                return corrected_text
-
-        except Exception as e:
-            self.logger.error(f"Error correcting text with paragraphs: {str(e)}")
-            # Fallback to simple paragraph splitting
-            corrected = self.correct_text(text, image_base64)
-            if "\n\n" in corrected:
-                return corrected.split("\n\n")
-            elif "\n" in corrected:
-                return corrected.split("\n")
-            else:
-                return corrected

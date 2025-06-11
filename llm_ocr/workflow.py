@@ -307,7 +307,11 @@ class OCRPipelineWorkflow:
                             continue
 
             # Initialize pipeline for OCR
-            pipeline = OCRPipeline(model=self.model, evaluator=self.evaluator)
+            pipeline = OCRPipeline(
+                model=self.model, 
+                evaluator=self.evaluator, 
+                prompt_version=self.prompt_version
+            )
 
             # Process document
             lines = (

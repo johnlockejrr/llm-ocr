@@ -6,21 +6,15 @@ import anthropic
 
 from llm_ocr.config import settings
 from llm_ocr.llm.base import BaseOCRModel
-from llm_ocr.prompts.prompt import ModelType, PromptVersion, get_prompt
 
 
 class ClaudeOCRModel(BaseOCRModel):
     """Claude implementation of OCR language model."""
 
-    def __init__(self, model_name: str, prompt_version: PromptVersion):
+    def __init__(self, model_name: str):
+        super().__init__(model_name)
         self.client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
         self.logger = logging.getLogger(__name__)
-        self.model_name = model_name
-        self.logger.debug("Model name: %s", model_name)
-        self.model_type = ModelType.CLAUDE
-        self.logger.debug("Model type: %s", self.model_type)
-        self.prompt_version = prompt_version
-        self.logger.debug("Prompt version: %s", self.prompt_version)
 
     def _get_response_text(self, blocks: list[Any]) -> str:
         """Extract all .text from TextBlocks only, concatenate."""
@@ -33,10 +27,8 @@ class ClaudeOCRModel(BaseOCRModel):
                     text_chunks.append(block.text)
         return "".join(text_chunks)
 
-    def process_single_line(self, image_base64: str) -> Dict[str, Any]:
-        """Process a single line image."""
-
-        prompt = get_prompt("SINGLE_LINE", self.model_type, self.prompt_version)
+    def process_single_line(self, prompt: str, image_base64: str) -> Dict[str, Any]:
+        """Process a single line image with pre-built prompt."""
 
         response = self.client.messages.create(
             model=self.model_name,
@@ -69,8 +61,10 @@ class ClaudeOCRModel(BaseOCRModel):
             # Handle case where result is not a dict (e.g., list or other type)
             return {"line": str(result) if result else "", "error": "Unexpected response format"}
 
-    def process_sliding_window(self, images_base64: List[str]) -> Optional[Dict[str, Any]]:
-        """Process window of lines."""
+    def process_sliding_window(
+        self, prompt: str, images_base64: List[str]
+    ) -> Optional[Dict[str, Any]]:
+        """Process window of lines with pre-built prompt."""
         content: List[Any] = []
         for img_base64 in images_base64:
             content.append(
@@ -80,7 +74,6 @@ class ClaudeOCRModel(BaseOCRModel):
                 }
             )
 
-        prompt = get_prompt("SLIDING_WINDOW", self.model_type, self.prompt_version)
         content.append({"type": "text", "text": prompt})
 
         try:
@@ -111,11 +104,8 @@ class ClaudeOCRModel(BaseOCRModel):
             self.logger.error(f"Error processing sliding window: {str(e)}")
             return None
 
-    def process_full_page(self, page_image_base64: str, document_id: str) -> str:
-        """Process full page."""
-        prompt = get_prompt(
-            "FULL_PAGE", self.model_type, self.prompt_version, document_id=document_id
-        )
+    def process_full_page(self, prompt: str, page_image_base64: str) -> str:
+        """Process full page with pre-built prompt."""
 
         try:
             response = self.client.messages.create(
@@ -177,15 +167,8 @@ class ClaudeOCRModel(BaseOCRModel):
             self.logger.debug(f"Response text: {self._get_response_text(response.content)}")
             return ""
 
-    def correct_text(self, text: str, image_base64: str, mode: str = "line") -> str:
-        """Correct OCR text and format as a single line."""
-        if mode == "line":
-            prompt = get_prompt("TEXT_CORRECTION", self.model_type, self.prompt_version, text=text)
-        else:
-            prompt = get_prompt(
-                "TEXT_CORRECTION_WITH_PARAGRAPHS", self.model_type, self.prompt_version, text=text
-            )
-
+    def correct_text(self, prompt: str, text: str, image_base64: str) -> str:
+        """Correct OCR text with pre-built prompt."""
         response = self.client.messages.create(
             model=self.model_name,
             max_tokens=2000,
@@ -211,44 +194,3 @@ class ClaudeOCRModel(BaseOCRModel):
         # Extract response text with proper typing
         response_text = self._get_response_text(response.content)
         return response_text.strip()
-
-    def correct_text_with_paragraphs(self, text: str, image_base64: str) -> Union[str, List[str]]:
-        """Correct OCR text preserving paragraph structure."""
-
-        prompt = get_prompt(
-            "TEXT_CORRECTION_WITH_PARAGRAPHS", self.model_type, self.prompt_version, text=text
-        )
-
-        response = self.client.messages.create(
-            model=self.model_name,
-            max_tokens=2000,
-            temperature=0.0,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": "image/jpeg",
-                                "data": image_base64,
-                            },
-                        },
-                        {"type": "text", "text": prompt},
-                    ],
-                }
-            ],
-        )
-
-        # Extract response text with proper typing
-        response_text = self._get_response_text(response.content)
-        corrected_text = response_text.strip()
-
-        # Split into paragraphs
-        if "\n\n" in corrected_text:
-            return corrected_text.split("\n\n")
-        elif "\n" in corrected_text:
-            return corrected_text.split("\n")
-        else:
-            return corrected_text

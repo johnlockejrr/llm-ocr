@@ -1,3 +1,5 @@
+"""Gemini OCR Model Implementation - Simplified without prompt logic."""
+
 import base64
 import logging
 from typing import Any, Dict, List, Optional, Union
@@ -7,7 +9,6 @@ from google.generativeai.types import PartDict
 
 from llm_ocr.config import settings
 from llm_ocr.llm.base import BaseOCRModel
-from llm_ocr.prompts.prompt import ModelType, PromptVersion, get_prompt
 
 # If you need more specific types from the library for hinting:
 # from google.generativeai.types import PartDict # Example
@@ -22,12 +23,10 @@ ContentPart = Union[str, PartDict]
 class GeminiOCRModel(BaseOCRModel):
     """Gemini implementation of OCR language model."""
 
-    def __init__(self, model_name: str, prompt_version: PromptVersion):
+    def __init__(self, model_name: str):
+        super().__init__(model_name)
         genai.configure(api_key=settings.GEMINI_API_KEY)
         self.model = genai.GenerativeModel(model_name)
-        self.model_name = model_name  # Keep if needed for logging or other purposes
-        self.model_type = ModelType.GEMINI
-        self.prompt_version = prompt_version
         self.logger = logging.getLogger(__name__)
 
     def _construct_image_part(self, image_base64: str) -> Any:
@@ -57,16 +56,15 @@ class GeminiOCRModel(BaseOCRModel):
             self.logger.warning(f"Request was blocked or had issues: {response.prompt_feedback}")
         return None
 
-    def process_single_line(self, image_base64: str, id: Optional[str] = None) -> Dict[str, Any]:
-        # Assuming prompt_version is always set via __init__
-        prompt_str = get_prompt("SINGLE_LINE", self.model_type, self.prompt_version)
+    def process_single_line(self, prompt: str, image_base64: str) -> Dict[str, Any]:
+        """Process a single line image with pre-built prompt."""
 
         try:
             image_part = self._construct_image_part(image_base64)
 
             # The 'contents' argument takes an iterable of parts.
             # A string is a valid part, and our image_part dict is also a valid part.
-            contents_payload: List[ContentPart] = [prompt_str, image_part]
+            contents_payload: List[ContentPart] = [prompt, image_part]
 
             response = self.model.generate_content(
                 contents_payload
@@ -103,14 +101,14 @@ class GeminiOCRModel(BaseOCRModel):
             return {"line": "", "error": str(e)}
 
     def process_sliding_window(
-        self, images_base64: List[str], id: Optional[str] = None
+        self, prompt: str, images_base64: List[str]
     ) -> Optional[Dict[str, Any]]:
-        prompt_str = get_prompt("SLIDING_WINDOW", self.model_type, self.prompt_version)
+        """Process window of lines with pre-built prompt."""
 
         try:
             # Initialize content_parts with the prompt string first
             # The type hint helps MyPy understand the list can contain mixed valid part types.
-            content_parts: List[ContentPart] = [prompt_str]
+            content_parts: List[ContentPart] = [prompt]
 
             for img_b64 in images_base64:
                 image_part = self._construct_image_part(img_b64)
@@ -152,14 +150,12 @@ class GeminiOCRModel(BaseOCRModel):
             self.logger.error(f"Error processing sliding window: {str(e)}", exc_info=True)
             return None  # Or a dict with error info
 
-    def process_full_page(self, page_image_base64: str, document_id: str) -> str:
-        prompt_str = get_prompt(
-            "FULL_PAGE", self.model_type, self.prompt_version, document_id=document_id
-        )
+    def process_full_page(self, prompt: str, page_image_base64: str) -> str:
+        """Process full page with pre-built prompt."""
 
         try:
             image_part = self._construct_image_part(page_image_base64)
-            content_parts: List[ContentPart] = [prompt_str, image_part]
+            content_parts: List[ContentPart] = [prompt, image_part]
             response = self.model.generate_content(content_parts)
 
             response_text = self._get_response_text(response)
@@ -203,14 +199,12 @@ class GeminiOCRModel(BaseOCRModel):
             self.logger.error(f"Error processing full page: {str(e)}", exc_info=True)
             return ""
 
-    def correct_text(self, text_to_correct: str, image_base64: str, mode: str = "single") -> str:
-        prompt_str = get_prompt(
-            "TEXT_CORRECTION", self.model_type, self.prompt_version, text=text_to_correct
-        )
+    def correct_text(self, prompt: str, text_to_correct: str, image_base64: str) -> str:
+        """Correct OCR text with pre-built prompt."""
 
         try:
             image_part = self._construct_image_part(image_base64)
-            content_parts: List[ContentPart] = [prompt_str, image_part]
+            content_parts: List[ContentPart] = [prompt, image_part]
             response = self.model.generate_content(content_parts)
 
             corrected_text = self._get_response_text(response)
@@ -226,58 +220,3 @@ class GeminiOCRModel(BaseOCRModel):
         except Exception as e:
             self.logger.error(f"Error correcting text: {str(e)}", exc_info=True)
             return text_to_correct
-
-    def correct_text_with_paragraphs(
-        self, text_to_correct: str, image_base64: str
-    ) -> Union[str, List[str]]:
-        prompt_str = get_prompt(
-            "TEXT_CORRECTION_WITH_PARAGRAPHS",
-            self.model_type,
-            self.prompt_version,
-            text=text_to_correct,
-        )
-
-        # Define fallback based on original text structure
-        fallback_result: Union[str, List[str]]
-        if "\n\n" in text_to_correct:
-            fallback_result = text_to_correct.split("\n\n")
-        elif "\n" in text_to_correct:
-            fallback_result = text_to_correct.split("\n")
-        else:
-            fallback_result = text_to_correct
-
-        try:
-            image_part = self._construct_image_part(image_base64)
-            content_parts: List[ContentPart] = [prompt_str, image_part]
-            response = self.model.generate_content(content_parts)
-
-            corrected_text_full = self._get_response_text(response)
-
-            if corrected_text_full is None:
-                self.logger.warning(
-                    "No text content in the response for paragraph correction. Returning original structure."
-                )
-                return fallback_result
-
-            corrected_text_stripped = corrected_text_full.strip()
-
-            if "\n\n" in corrected_text_stripped:
-                return corrected_text_stripped.split("\n\n")
-            elif "\n" in corrected_text_stripped:
-                return corrected_text_stripped.split("\n")
-            else:
-                return corrected_text_stripped
-
-        except Exception as e:
-            self.logger.error(f"Error correcting text with paragraphs: {str(e)}", exc_info=True)
-            # Fallback to splitting the simply corrected text, or the original if that fails
-            try:
-                simple_corrected = self.correct_text(text_to_correct, image_base64)
-                if "\n\n" in simple_corrected:
-                    return simple_corrected.split("\n\n")
-                elif "\n" in simple_corrected:
-                    return simple_corrected.split("\n")
-                else:
-                    return simple_corrected
-            except Exception:  # If simple correction also fails
-                return fallback_result
