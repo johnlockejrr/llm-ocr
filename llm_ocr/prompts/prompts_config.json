@@ -1,0 +1,39 @@
+{
+  "components": {
+    "base_ocr": "Extract OCR text from 18th century Russian book",
+    "orthography": "Preserve all original Old Russian orthography including ѣ, Ѳ, ѳ, ѵ, and ъ characters",
+    "no_explanations": "No explanations or formatting",
+    "json_format": "Respond with ONLY a JSON object: {\"line\": \"extracted text\"}",
+    "json_array_format": "Respond with ONLY a JSON array where each object has a 'line' field",
+    "text_only": "Return only the extracted text"
+  },
+  
+  "context_enrichment": {
+    "v1": "",
+    "v2": " from a {book_year} book titled \"{book_title}\"",
+    "v3": ". You are processing \"{book_title}\" published in {publication_info} ({book_year})",
+    "v4": ". Вы обрабатываете книгу \"{book_title}\" {book_year} года, {publication_info}"
+  },
+  
+  "mode_instructions": {
+    "single_line": "Process this single line image",
+    "sliding_window": "Process these consecutive lines, focusing on the middle line while using surrounding lines as context",
+    "full_page": "Process this full page image line by line, maintaining exact layout",
+    "correction": "Correct this OCR text and format as continuous paragraph. Join hyphenated words at line breaks (e.g., \"вне-\" + \"дряться\" -> \"внедряться\"). Remove all line breaks. Keep original punctuation"
+  },
+  
+  "output_formats": {
+    "structured": {
+      "single_line": "{json_format}",
+      "sliding_window": "{json_format}",
+      "full_page": "{json_array_format}",
+      "correction": "Return only the corrected continuous text without any markup or explanations"
+    },
+    "simple": {
+      "single_line": "{text_only}. {no_explanations}",
+      "sliding_window": "{text_only}. {no_explanations}",
+      "full_page": "Return text line by line. {no_explanations}",
+      "correction": "Return corrected text. {no_explanations}"
+    }
+  }
+}
