@@ -53,7 +53,6 @@ class TestBasicWorkflow:
         # Check that results structure is initialized
         assert "document_info" in workflow.results
         assert "models" in workflow.results
-        assert "processing_history" in workflow.results
 
     @pytest.mark.skip(reason="Requires API keys - disabled for CI/CD")
     @patch("llm_ocr.model_factory.create_model")
@@ -86,9 +85,6 @@ class TestBasicWorkflow:
                 assert isinstance(results, dict)
                 assert "document_info" in results
                 assert "models" in results
-
-                # Verify that processing history was recorded
-                assert len(results["processing_history"]) > 0
 
             except Exception as e:
                 # Expected for now since we don't have full mock integration

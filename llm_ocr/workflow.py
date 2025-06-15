@@ -164,8 +164,7 @@ class OCRPipelineWorkflow:
                 "timestamp": self.timestamp,
                 "prompt_version": self.prompt_version.name,
             },
-            "ocr_models": {self.ocr_model_name: {}},
-            "processing_history": [],
+            "ocr_models": {self.ocr_model_name: {}}
         }
 
     def _load_or_init_correction_results(self) -> Dict[str, Any]:
@@ -207,8 +206,7 @@ class OCRPipelineWorkflow:
                 "timestamp": self.timestamp,
                 "prompt_version": self.prompt_version.name,
             },
-            "correction_models": {},
-            "processing_history": [],
+            "correction_models": {}
         }
 
     def _initialize_model(self) -> Any:
@@ -230,31 +228,6 @@ class OCRPipelineWorkflow:
         with open(self.image_path, "rb") as image_file:
             image_str = base64.b64encode(image_file.read()).decode("utf-8")
         return image_str
-
-    def _add_ocr_history_entry(self, mode: Optional[str]) -> None:
-        """Add an entry to the OCR processing history."""
-        entry = {
-            "timestamp": datetime.datetime.now().strftime("%Y%m%d_%H%M%S"),
-            "step": "ocr",
-            "model": self.ocr_model_name,
-        }
-
-        if mode:
-            entry["mode"] = mode
-
-        self.ocr_results["processing_history"].append(entry)
-
-    def _add_correction_history_entry(self, ocr_model: str, correction_mode: str) -> None:
-        """Add an entry to the correction processing history."""
-        entry = {
-            "timestamp": datetime.datetime.now().strftime("%Y%m%d_%H%M%S"),
-            "step": "correction",
-            "ocr_model": ocr_model,
-            "correction_model": self.correction_model_name,
-            "correction_mode": correction_mode,
-        }
-
-        self.correction_results["processing_history"].append(entry)
 
     def _save_ocr_results(self) -> None:
         """Save the OCR results to the JSON file."""
@@ -349,9 +322,6 @@ class OCRPipelineWorkflow:
                 self.ocr_results["ocr_models"][self.ocr_model_name][mode.value][
                     "lines"
                 ] = serializable_lines
-
-            # Add to history
-            self._add_ocr_history_entry(mode=mode.value)
 
             # Save results after each mode to preserve progress
             self._save_ocr_results()
@@ -518,11 +488,6 @@ class OCRPipelineWorkflow:
                     "ocr_sources"
                 ][self.ocr_model_name] = source_results
                 all_results[mode] = source_results
-
-                # Add to history
-                self._add_correction_history_entry(
-                    ocr_model=self.ocr_model_name, correction_mode=mode
-                )
 
             except Exception as e:
                 logging.error(f"Correction failed for mode '{mode}': {e}")
