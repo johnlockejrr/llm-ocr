@@ -438,6 +438,8 @@ class OCRPipelineWorkflow:
                 "ocr_sources": {}
             }
 
+        logging.info(f"Correction_model_name: {self.correction_model_name}")
+
         # Check if this specific OCR source already exists for this mode
         if (
             self.ocr_model_name
@@ -449,12 +451,9 @@ class OCRPipelineWorkflow:
             logging.info(
                 f"Correction mode '{self.correction_mode}' with OCR source '{self.ocr_model_name}' already exists. Skipping."
             )
+
             return
         else:
-            all_results[self.correction_mode] = self.correction_results["correction_models"][
-                self.correction_model_name
-            ][self.correction_mode]["ocr_sources"][self.ocr_model_name]
-
             logging.info(f"Processing correction mode: {self.correction_mode}")
 
         try:
