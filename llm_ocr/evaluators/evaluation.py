@@ -387,11 +387,7 @@ class OCREvaluationService:
     def _log_detailed_report(self, report_data: Dict[str, Any]) -> None:
         """Log detailed report with proper encoding."""
         try:
-            self.logger.info("\nDetailed Analysis")
-            self.logger.info("=" * 50)
-
             # Basic metrics
-            self.logger.info("\nBasic Metrics:")
             self.logger.info(f"Character Accuracy: {report_data.get('character_accuracy', 0):.2%}")
             self.logger.info(f"Word Accuracy: {report_data.get('word_accuracy', 0):.2%}")
             self.logger.info(

@@ -449,6 +449,8 @@ class OCRPipelineWorkflow:
             logging.info(
                 f"Correction mode '{self.correction_mode}' with OCR source '{self.ocr_model_name}' already exists. Skipping."
             )
+            return
+        else:
             all_results[self.correction_mode] = self.correction_results["correction_models"][
                 self.correction_model_name
             ][self.correction_mode]["ocr_sources"][self.ocr_model_name]
@@ -587,21 +589,14 @@ class OCRPipelineWorkflow:
 
     def _get_ground_truth_for_mode(self, mode: str) -> Optional[str]:
         """Get appropriate ground truth for the correction mode."""
-        if mode == "line":
-            # Try to load line-specific ground truth
-            line_filename = Path(self.ground_truth_path).with_stem(
-                Path(self.ground_truth_path).stem + "_line"
+        # Try mode-specific ground truth first
+        if mode in ["line", "para"]:
+            mode_specific_path = Path(self.ground_truth_path).with_stem(
+                Path(self.ground_truth_path).stem + f"_{mode}"
             )
-            if line_filename.exists():
-                return line_filename.read_text(encoding="utf-8")
-        elif mode == "para":
-            # Try to load paragraph-specific ground truth
-            para_filename = Path(self.ground_truth_path).with_stem(
-                Path(self.ground_truth_path).stem + "_para"
-            )
-            if para_filename.exists():
-                return para_filename.read_text(encoding="utf-8")
-
+            if mode_specific_path.exists():
+                return mode_specific_path.read_text(encoding="utf-8")
+        
         # Fallback to regular ground truth
         return self.ground_truth
 
