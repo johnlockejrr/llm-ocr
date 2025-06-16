@@ -201,11 +201,13 @@ class GeminiOCRModel(BaseOCRModel):
 
     def correct_text(self, prompt: str, text_to_correct: str, image_str: str, mode: str = "line") -> str:
         """Correct OCR text with pre-built prompt."""
+        logging.info(f"Correcting text in mode: {mode} with prompt: {prompt}")
 
         try:
             image_part = self._construct_image_part(image_str)
             content_parts: List[ContentPart] = [prompt, image_part]
             response = self.model.generate_content(content_parts)
+            logging.info(f"Response received for text correction: {response}")
 
             corrected_text = self._get_response_text(response)
 

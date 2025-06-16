@@ -73,6 +73,7 @@ class OCRCorrectionPipeline:
 
         try:
             # Perform correction with mode-specific handling
+            self.logger.info(f"Processing with correction_mode: {correction_mode}")
             corrected_text = self.mode_processors[correction_mode](ocr_text, image_str)
 
             # Create result object
@@ -99,7 +100,7 @@ class OCRCorrectionPipeline:
         """Process correction in line mode."""
         # Build correction prompt
         prompt = self.prompt_builder.build_prompt(
-            mode="correction",
+            mode="correction_line",
             prompt_type=PromptType.SIMPLE,
             version=self.prompt_version,
             text=ocr_text
@@ -107,13 +108,35 @@ class OCRCorrectionPipeline:
         
         corrected_text = self.model.correct_text(prompt, ocr_text, image_str, mode="line")
 
-        # Post-process: ensure single line (remove any newlines)
-        corrected_text = corrected_text.replace("\n", " ").strip()
+        # Post-process: clean up excessive whitespace while preserving line structure
+        corrected_text = self._clean_line_spacing(corrected_text)
 
         # Optional: Get confidence from model if available
         confidence = getattr(self.model, "get_last_confidence", lambda: None)()
 
         return LineCorrection(corrected_text=corrected_text, confidence=confidence)
+
+    def _clean_line_spacing(self, text: str) -> str:
+        """Clean up excessive whitespace while preserving line structure."""
+        lines = text.split('\n')
+        cleaned_lines = []
+        
+        for line in lines:
+            # Remove excessive leading/trailing spaces but preserve some indentation
+            stripped = line.strip()
+            if stripped:
+                # Keep modest indentation for formatting (max 4 spaces)
+                leading_spaces = len(line) - len(line.lstrip())
+                if leading_spaces > 0:
+                    indent = "  " if leading_spaces >= 2 else " "
+                    cleaned_lines.append(indent + stripped)
+                else:
+                    cleaned_lines.append(stripped)
+            else:
+                # Preserve empty lines
+                cleaned_lines.append("")
+        
+        return '\n'.join(cleaned_lines)
 
     def _process_para_mode(self, ocr_text: str, image_str: str) -> ParagraphCorrection:
         """Process correction in paragraph mode."""

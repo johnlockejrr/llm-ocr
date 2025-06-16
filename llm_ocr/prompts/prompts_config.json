@@ -21,6 +21,7 @@
     "sliding_window": "Process these consecutive lines, focusing on the middle line while using surrounding lines as context",
     "full_page": "Process this full page image line by line, maintaining exact layout",
     "correction": "Correct this OCR text and format as continuous paragraph. Join hyphenated words at line breaks (e.g., \"вне-\" + \"дряться\" -> \"внедряться\"). Remove all line breaks. Keep original punctuation",
+    "correction_line": "Correct OCR errors in this text while preserving the original line structure and formatting. Keep all line breaks and hyphenated words intact.",
     "correction_para": "Correct this OCR text while preserving paragraph structure. Join hyphenated words within paragraphs. Keep paragraph breaks. Maintain original punctuation and spacing"
   },
   
@@ -30,6 +31,7 @@
       "sliding_window": "{json_format}",
       "full_page": "{json_array_format}",
       "correction": "Return only the corrected continuous text without any markup or explanations",
+      "correction_line": "Return corrected text preserving line structure. {no_explanations}",
       "correction_para": "Return corrected text with paragraph structure intact. {no_explanations}"
     },
     "simple": {
@@ -37,6 +39,7 @@
       "sliding_window": "{text_only}. {no_explanations}",
       "full_page": "Return text line by line. {no_explanations}",
       "correction": "Return corrected text. {no_explanations}",
+      "correction_line": "Return corrected text with lines preserved. {no_explanations}",
       "correction_para": "Return corrected text with paragraphs. {no_explanations}"
     }
   }

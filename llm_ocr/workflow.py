@@ -468,10 +468,18 @@ class OCRPipelineWorkflow:
 
             logging.info(f"Mode '{self.correction_mode}' completed")
 
+            # Get OCR base metrics for comparison
+            ocr_base_metrics = None
+            if (self.ocr_model_name in self.ocr_results.get("ocr_models", {}) and 
+                "fullpage" in self.ocr_results["ocr_models"][self.ocr_model_name] and
+                "metrics" in self.ocr_results["ocr_models"][self.ocr_model_name]["fullpage"]):
+                ocr_base_metrics = self.ocr_results["ocr_models"][self.ocr_model_name]["fullpage"]["metrics"]
+
             # Store results for this specific OCR source
             source_results = {
                 "original_ocr_text": ocr_text,
                 "corrected_text": correction_results.get("corrected_text", ""),
+                "ocr_base_metrics": ocr_base_metrics,
             }
 
             # Add mode-specific fields
