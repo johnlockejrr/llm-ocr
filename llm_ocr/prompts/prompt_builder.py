@@ -126,16 +126,24 @@ class PromptBuilder:
             # Get template components
             config = self.config
             # Handle both enum and string versions
-            version_str = version.value if hasattr(version, 'value') else str(version)
-            prompt_type_str = prompt_type.value if hasattr(prompt_type, 'value') else str(prompt_type)
-            
+            version_str = version.value if hasattr(version, "value") else str(version)
+            prompt_type_str = (
+                prompt_type.value if hasattr(prompt_type, "value") else str(prompt_type)
+            )
+
             context = config["context_enrichment"][version_str]
             mode_instruction = config["mode_instructions"][mode.lower()]
             output_format = config["output_formats"][prompt_type_str][mode.lower()]
 
+            # Choose appropriate base component based on mode
+            if mode.lower().startswith('correction'):
+                base_component = config['components']['base_correction']
+            else:
+                base_component = config['components']['base_ocr']
+            
             # Build template
             template = (
-                f"{config['components']['base_ocr']}{context}. "
+                f"{base_component}{context}. "
                 f"{mode_instruction}. "
                 f"{config['components']['orthography']}. "
                 f"{output_format}"

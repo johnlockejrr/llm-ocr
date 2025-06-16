@@ -12,6 +12,7 @@ from ..config import EvaluationConfig
 from ..evaluators.evaluator import MetricsComparer, OCREvaluator
 from ..llm.base import BaseOCRModel
 from ..models import CorrectionMode, LineCorrection, OCRCorrectionResult, ParagraphCorrection
+from ..prompts.prompt_builder import PromptBuilder, PromptType, PromptVersion
 
 
 class OCRCorrectionPipeline:
@@ -22,6 +23,7 @@ class OCRCorrectionPipeline:
         model: BaseOCRModel,
         evaluator: OCREvaluator,
         config: Optional[EvaluationConfig] = None,
+        prompt_version: Optional[PromptVersion] = None,
     ):
         self.model = model
         self.evaluator = evaluator
@@ -29,6 +31,8 @@ class OCRCorrectionPipeline:
         self.metrics_comparer = MetricsComparer()
         self.logger = logging.getLogger(__name__)
         self.results: Dict[str, Any] = {}
+        self.prompt_version = prompt_version or PromptVersion.V3
+        self.prompt_builder = PromptBuilder()
 
         # Mode-specific processors
         self.mode_processors: Dict[
@@ -93,7 +97,15 @@ class OCRCorrectionPipeline:
 
     def _process_line_mode(self, ocr_text: str, image_str: str) -> LineCorrection:
         """Process correction in line mode."""
-        corrected_text = self.model.correct_text(ocr_text, image_str, mode="line")
+        # Build correction prompt
+        prompt = self.prompt_builder.build_prompt(
+            mode="correction",
+            prompt_type=PromptType.SIMPLE,
+            version=self.prompt_version,
+            text=ocr_text
+        )
+        
+        corrected_text = self.model.correct_text(prompt, ocr_text, image_str, mode="line")
 
         # Post-process: ensure single line (remove any newlines)
         corrected_text = corrected_text.replace("\n", " ").strip()
@@ -105,7 +117,15 @@ class OCRCorrectionPipeline:
 
     def _process_para_mode(self, ocr_text: str, image_str: str) -> ParagraphCorrection:
         """Process correction in paragraph mode."""
-        corrected_text = self.model.correct_text(ocr_text, image_str, mode="para")
+        # Build correction prompt for paragraph mode
+        prompt = self.prompt_builder.build_prompt(
+            mode="correction_para",
+            prompt_type=PromptType.SIMPLE,
+            version=self.prompt_version,
+            text=ocr_text
+        )
+        
+        corrected_text = self.model.correct_text(prompt, ocr_text, image_str, mode="para")
 
         # Parse paragraphs
         paragraphs = self._parse_paragraphs(corrected_text)

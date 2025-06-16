@@ -12,7 +12,7 @@ from llm_ocr.models import ProcessingMode
 from llm_ocr.pipelines.correction import OCRCorrectionPipeline
 from llm_ocr.pipelines.ocr import OCRPipeline
 from llm_ocr.processors.alto import ALTOProcessor
-from llm_ocr.prompts.prompt import PromptVersion
+from llm_ocr.prompts.prompt_builder import PromptVersion
 from llm_ocr.utils.image_tool import resize_image_to_dpi
 
 # Configure logging
@@ -41,6 +41,7 @@ class OCRPipelineWorkflow:
         ocr_model_name: str = "claude-3-7-sonnet-20250219",
         correction_model_name: Optional[str] = None,
         modes: List[ProcessingMode] = [ProcessingMode.FULL_PAGE],
+        correction_mode: str = "line",
         output_dir: str = "outputs",
         prompt_version: PromptVersion = PromptVersion.V3,
         evaluation: bool = True,
@@ -71,6 +72,7 @@ class OCRPipelineWorkflow:
         self.ocr_model_name = ocr_model_name
         self.correction_model_name = correction_model_name or ocr_model_name
         self.modes = modes
+        self.correction_mode = correction_mode
         self.rerun = rerun
         self.target_dpi = target_dpi  # Store target DPI
 
@@ -164,7 +166,7 @@ class OCRPipelineWorkflow:
                 "timestamp": self.timestamp,
                 "prompt_version": self.prompt_version.name,
             },
-            "ocr_models": {self.ocr_model_name: {}}
+            "ocr_models": {self.ocr_model_name: {}},
         }
 
     def _load_or_init_correction_results(self) -> Dict[str, Any]:
@@ -206,7 +208,7 @@ class OCRPipelineWorkflow:
                 "timestamp": self.timestamp,
                 "prompt_version": self.prompt_version.name,
             },
-            "correction_models": {}
+            "correction_models": {},
         }
 
     def _initialize_model(self) -> Any:
@@ -281,9 +283,7 @@ class OCRPipelineWorkflow:
 
             # Initialize pipeline for OCR
             pipeline = OCRPipeline(
-                model=self.model, 
-                evaluator=self.evaluator, 
-                prompt_version=self.prompt_version
+                model=self.model, evaluator=self.evaluator, prompt_version=self.prompt_version
             )
 
             # Process document
@@ -377,7 +377,7 @@ class OCRPipelineWorkflow:
                 logging.error(f"Error evaluating OCR results for mode {mode}: {e}")
 
     # STEP 3: Run correction with LLM
-    def run_correction(self, correction_modes: Union[str, List[str]] = "line") -> None:
+    def run_correction(self) -> None:
         """
         Step 3: Run correction step with LLM and save results.
 
@@ -387,12 +387,8 @@ class OCRPipelineWorkflow:
         Returns:
             Dictionary with correction results for all modes
         """
-        # Normalize input to list
-        if isinstance(correction_modes, str):
-            correction_modes = [correction_modes]
-
         logging.info(
-            f"STEP 3: Running OCR correction with correction model: {self.correction_model_name}, modes: {correction_modes}"
+            f"STEP 3: Running OCR correction with correction model: {self.correction_model_name}, mode: {self.correction_mode}"
         )
 
         # Extract OCR text from fullpage results (required for correction)
@@ -427,71 +423,71 @@ class OCRPipelineWorkflow:
         # Create correction pipeline with correction model
         correction_model = self._initialize_correction_model()
         correction_pipeline = OCRCorrectionPipeline(
-            model=correction_model, evaluator=self.evaluator
+            model=correction_model, evaluator=self.evaluator, prompt_version=self.prompt_version
+        )
+        logging.info(
+            f"Correction model initialized: {self.correction_model_name}, mode: {self.correction_mode}"
         )
 
         all_results = {}
 
         # Process each mode
-        for mode in correction_modes:
-            # Initialize correction mode if not exists
-            if mode not in self.correction_results["correction_models"][self.correction_model_name]:
-                self.correction_results["correction_models"][self.correction_model_name][mode] = {
-                    "ocr_sources": {}
-                }
+        # Initialize correction mode if not exists
+        if self.correction_mode not in self.correction_results["correction_models"][self.correction_model_name]:
+            self.correction_results["correction_models"][self.correction_model_name][self.correction_mode] = {
+                "ocr_sources": {}
+            }
 
-            # Check if this specific OCR source already exists for this mode
-            if (
-                self.ocr_model_name
-                in self.correction_results["correction_models"][self.correction_model_name][mode][
-                    "ocr_sources"
-                ]
-                and not self.rerun
-            ):
-                logging.info(
-                    f"Correction mode '{mode}' with OCR source '{self.ocr_model_name}' already exists. Skipping."
+        # Check if this specific OCR source already exists for this mode
+        if (
+            self.ocr_model_name
+            in self.correction_results["correction_models"][self.correction_model_name][self.correction_mode][
+                "ocr_sources"
+            ]
+            and not self.rerun
+        ):
+            logging.info(
+                f"Correction mode '{self.correction_mode}' with OCR source '{self.ocr_model_name}' already exists. Skipping."
+            )
+            all_results[self.correction_mode] = self.correction_results["correction_models"][
+                self.correction_model_name
+            ][self.correction_mode]["ocr_sources"][self.ocr_model_name]
+
+            logging.info(f"Processing correction mode: {self.correction_mode}")
+
+        try:
+            # Run correction with specified mode
+            correction_results = correction_pipeline.run_correction(
+                ocr_text=ocr_text, image_str=optimized_image_str, mode=self.correction_mode
+            )
+
+            if not correction_results or not isinstance(correction_results, dict):
+                logging.warning("No correction results available for evaluation.")
+                return
+
+            logging.info(f"Mode '{self.correction_mode}' completed")
+
+            # Store results for this specific OCR source
+            source_results = {
+                "original_ocr_text": ocr_text,
+                "corrected_text": correction_results.get("corrected_text", ""),
+            }
+
+            # Add mode-specific fields
+            if self.correction_mode == "para" and "paragraphs" in correction_results:
+                source_results["paragraphs"] = correction_results["paragraphs"]
+                source_results["paragraph_boundaries"] = correction_results.get(
+                    "paragraph_boundaries", []
                 )
-                all_results[mode] = self.correction_results["correction_models"][
-                    self.correction_model_name
-                ][mode]["ocr_sources"][self.ocr_model_name]
-                continue
 
-            logging.info(f"Processing correction mode: {mode}")
+            # Store under the specific correction model -> mode -> OCR source
+            self.correction_results["correction_models"][self.correction_model_name][self.correction_mode][
+                "ocr_sources"][self.ocr_model_name] = source_results
+            all_results[self.correction_mode] = source_results
 
-            try:
-                # Run correction with specified mode
-                correction_results = correction_pipeline.run_correction(
-                    image_str=optimized_image_str, ocr_text=ocr_text, mode=mode
-                )
-
-                if not correction_results or not isinstance(correction_results, dict):
-                    logging.warning("No correction results available for evaluation.")
-                    return
-
-                logging.info(f"Mode '{mode}' completed")
-
-                # Store results for this specific OCR source
-                source_results = {
-                    "original_ocr_text": ocr_text,
-                    "corrected_text": correction_results.get("corrected_text", ""),
-                }
-
-                # Add mode-specific fields
-                if mode == "para" and "paragraphs" in correction_results:
-                    source_results["paragraphs"] = correction_results["paragraphs"]
-                    source_results["paragraph_boundaries"] = correction_results.get(
-                        "paragraph_boundaries", []
-                    )
-
-                # Store under the specific correction model -> mode -> OCR source
-                self.correction_results["correction_models"][self.correction_model_name][mode][
-                    "ocr_sources"
-                ][self.ocr_model_name] = source_results
-                all_results[mode] = source_results
-
-            except Exception as e:
-                logging.error(f"Correction failed for mode '{mode}': {e}")
-                all_results[mode] = {"error": str(e)}
+        except Exception as e:
+            logging.error(f"Correction failed for mode '{self.correction_mode}': {e}")
+            all_results[self.correction_mode] = {"error": str(e)}
 
         # Save results after all modes
         self._save_correction_results()

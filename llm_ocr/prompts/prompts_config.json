@@ -1,6 +1,7 @@
 {
   "components": {
     "base_ocr": "Extract OCR text from 18th century Russian book",
+    "base_correction": "You are an expert text correction system for 18th century Russian texts",
     "orthography": "Preserve all original Old Russian orthography including ѣ, Ѳ, ѳ, ѵ, and ъ characters",
     "no_explanations": "No explanations or formatting",
     "json_format": "Respond with ONLY a JSON object: {\"line\": \"extracted text\"}",
@@ -19,7 +20,8 @@
     "single_line": "Process this single line image",
     "sliding_window": "Process these consecutive lines, focusing on the middle line while using surrounding lines as context",
     "full_page": "Process this full page image line by line, maintaining exact layout",
-    "correction": "Correct this OCR text and format as continuous paragraph. Join hyphenated words at line breaks (e.g., \"вне-\" + \"дряться\" -> \"внедряться\"). Remove all line breaks. Keep original punctuation"
+    "correction": "Correct this OCR text and format as continuous paragraph. Join hyphenated words at line breaks (e.g., \"вне-\" + \"дряться\" -> \"внедряться\"). Remove all line breaks. Keep original punctuation",
+    "correction_para": "Correct this OCR text while preserving paragraph structure. Join hyphenated words within paragraphs. Keep paragraph breaks. Maintain original punctuation and spacing"
   },
   
   "output_formats": {
@@ -27,13 +29,15 @@
       "single_line": "{json_format}",
       "sliding_window": "{json_format}",
       "full_page": "{json_array_format}",
-      "correction": "Return only the corrected continuous text without any markup or explanations"
+      "correction": "Return only the corrected continuous text without any markup or explanations",
+      "correction_para": "Return corrected text with paragraph structure intact. {no_explanations}"
     },
     "simple": {
       "single_line": "{text_only}. {no_explanations}",
       "sliding_window": "{text_only}. {no_explanations}",
       "full_page": "Return text line by line. {no_explanations}",
-      "correction": "Return corrected text. {no_explanations}"
+      "correction": "Return corrected text. {no_explanations}",
+      "correction_para": "Return corrected text with paragraphs. {no_explanations}"
     }
   }
 }

@@ -29,9 +29,9 @@ class GeminiOCRModel(BaseOCRModel):
         self.model = genai.GenerativeModel(model_name)
         self.logger = logging.getLogger(__name__)
 
-    def _construct_image_part(self, image_base64: str) -> Any:
+    def _construct_image_part(self, image_str: str) -> Any:
         """Helper to decode base64 image and structure it as an image part."""
-        image_bytes = base64.b64decode(image_base64)
+        image_bytes = base64.b64decode(image_str)
         # Correct structure for an inline image part
         return {"inline_data": {"mime_type": "image/jpeg", "data": image_bytes}}
 
@@ -199,11 +199,11 @@ class GeminiOCRModel(BaseOCRModel):
             self.logger.error(f"Error processing full page: {str(e)}", exc_info=True)
             return ""
 
-    def correct_text(self, prompt: str, text_to_correct: str, image_base64: str) -> str:
+    def correct_text(self, prompt: str, text_to_correct: str, image_str: str, mode: str = "line") -> str:
         """Correct OCR text with pre-built prompt."""
 
         try:
-            image_part = self._construct_image_part(image_base64)
+            image_part = self._construct_image_part(image_str)
             content_parts: List[ContentPart] = [prompt, image_part]
             response = self.model.generate_content(content_parts)
 
